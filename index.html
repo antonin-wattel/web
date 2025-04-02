@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antonin Wattel - Under Construction</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles v35.1 - Under Construction Style Fix */
+        :root {
+            --accent-color: #FFFF00; /* Jaune */
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            /* --box-bg-color: rgba(255, 255, 255, 0.8); */ /* Plus utilisé */
+            /* --nav-bg-color: rgba(255, 255, 255, 0.75); */ /* Plus utilisé */
+            --footer-bg-color: rgba(255, 255, 255, 0.8);
+            --footer-text-color: #555;
+            --border-color: #000;
+            --selection-border: #000000;
+            --selection-bg: rgba(255, 255, 0, 0.15);
+            --cursor-blob-color: #000000;
+            --custom-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 v20 M0 10 h20' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E") 10 10, crosshair;
+            --custom-cursor-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 v20 M0 10 h20' stroke='%23FFF' stroke-width='1'/%3E%3C/svg%3E") 10 10, crosshair;
+        }
+
+        /* Styles pour le thème sombre */
+        body.dark-theme {
+            --bg-color: #000000; --text-color: #ffffff; /* --box-bg-color: rgba(10, 10, 10, 0.85); */
+            /* --nav-bg-color: rgba(10, 10, 10, 0.75); */ --footer-bg-color: rgba(10, 10, 10, 0.8);
+            --footer-text-color: #aaa; --border-color: #fff; --selection-border: #ffffff;
+            --selection-bg: rgba(255, 255, 0, 0.15); --cursor-blob-color: #ffffff;
+             cursor: var(--custom-cursor-dark);
+        }
+        body.dark-theme ::selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
+        body.dark-theme ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
+
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-smooth: never; -webkit-font-smoothing: none; cursor: var(--custom-cursor); transition: background-color 0.3s, color 0.3s; }
+        ::selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
+        ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
+
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0.9; }
+
+        #main-view-container { /* Plus besoin de gérer #project-detail-view */
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; visibility: visible; opacity: 1;
+        }
+
+        /* Style pour le message "Under Construction" (style titre) */
+        #construction-message {
+            position: absolute;
+            top: 12%; /* Positionné comme l'ancien titre */
+            left: 5%;
+            transform: none; /* Pas de centrage */
+            font-size: 12px; /* Taille réduite */
+            font-family: Arial, Helvetica, sans-serif; /* Police standard */
+            font-weight: normal; /* Pas gras */
+            color: var(--text-color);
+            text-shadow: none; /* Pas d'ombre */
+            z-index: 15;
+            text-align: left; /* Alignement gauche */
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: color 0.3s;
+        }
+
+        .nav-item { /* Style commun pour les éléments de nav restants */
+            position: absolute; font-family: Arial, Helvetica, sans-serif;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            padding: 5px 7px; z-index: 15;
+            background-color: transparent; color: var(--text-color);
+            transition: color 0.1s linear;
+            border: none; text-decoration: none; white-space: nowrap;
+            overflow: visible;
+            cursor: inherit !important;
+        }
+
+         /* Style Nom (Times Italic Déformé) */
+         #nav-name {
+             font-family: 'Times New Roman', Times, serif; font-style: italic;
+             font-size: 34px; padding: 8px 12px; border: none;
+             position: absolute; /* Changé de relative */
+             top: 15px; left: 15px; /* Positionnement direct */
+             z-index: 16; transform: skewX(-5deg); text-shadow: none;
+             background-color: transparent; color: var(--text-color);
+             cursor: default;
+         }
+         #nav-name::before { display: none; }
+         #nav-name:hover { color: var(--accent-color); background-color: transparent; }
+
+        /* Positionnement (Seulement Nom et Bouton Thème) */
+        /* #nav-about, #nav-contact supprimés */
+
+        /* Footer */
+        footer { position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; padding: 5px 0; font-size: 10px; color: var(--footer-text-color); background-color: var(--footer-bg-color); z-index: 100; transition: background-color 0.3s, color 0.3s; }
+
+        /* Bouton Dark Mode Icones (plus petit) */
+        #theme-toggle-button { position: fixed; top: 15px; right: 15px; z-index: 110; padding: 4px; line-height: 0; background-color: var(--bg-color); color: var(--text-color); border: 1px solid var(--text-color); transition: background-color 0.3s, color 0.3s, border-color 0.3s; cursor: inherit !important; }
+        #theme-toggle-button svg { width: 16px; height: 16px; vertical-align: top; }
+        #theme-toggle-button .sun-icon svg { stroke: currentColor; }
+        #theme-toggle-button .moon-icon svg { fill: currentColor; }
+        #theme-toggle-button:hover { background-color: var(--text-color); color: var(--bg-color); }
+        #theme-toggle-button .moon-icon { display: none; }
+        body.dark-theme #theme-toggle-button .moon-icon { display: inline-block; }
+        body.dark-theme #theme-toggle-button .sun-icon { display: none; }
+
+        /* Blob Gaussien (Inutile car pas de hover projet) */
+        #gaussian-blob { display: none; }
+
+        /* Boîte de sélection (Clic+Glisser) */
+        #selection-box { position: fixed; border: 1px dashed var(--selection-border); background-color: var(--selection-bg); pointer-events: none; display: none; z-index: 200; transition: border-color 0.3s, background-color 0.3s; }
+        body.dark-theme #selection-box { border-color: var(--accent-color); background-color: rgba(255, 255, 0, 0.1); }
+
+        /* Petit blob noir/blanc qui suit le curseur */
+        #cursor-blob { position: fixed; width: 8px; height: 8px; background-color: var(--cursor-blob-color); border-radius: 50%; filter: blur(1px); pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background-color 0.3s; }
+
+    </style>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+    <div id="selection-box"></div>
+    <div id="cursor-blob"></div>
+
+    <div id="main-view-container">
+        <button id="theme-toggle-button" title="Changer le thème">
+             <span class="sun-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </span>
+            <span class="moon-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </span>
+        </button>
+        <span id="nav-name" class="nav-item">Antonin Wattel</span>
+        <div id="construction-message">UNDER CONSTRUCTION</div>
+
+        </div>
+
+    <footer>
+        © 2025 Antonin Wattel. Tous droits réservés.
+    </footer>
+
+
+    <script type="module">
+        // --- Imports Three.js ---
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+        // Loaders non utilisés pour l'instant mais gardés
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+        // --- Données des Projets (non utilisées ici) ---
+        // const projectData = { ... };
+
+        // --- three.js Background Animation ---
+        let scene, camera, renderer, composer, defaultModels = [];
+        const clock = new THREE.Clock();
+        let selectionContrastPass, ditherPass, blurPass;
+        // let hoverMaterial; // Plus nécessaire
+
+        // UNIQUEMENT TorusKnot
+        const knotGeometry = new THREE.TorusKnotGeometry(1.5, 0.5, 64, 8);
+        const modelBaseMaterial = new THREE.MeshStandardMaterial({
+             color: 0x555555, metalness: 0.1, roughness: 0.9
+        });
+
+        function createModel(geometry, scale = 1.0) {
+             const materialInstance = modelBaseMaterial.clone();
+             const model = new THREE.Mesh(geometry, materialInstance);
+             const randomScaleFactor = Math.random() * 0.4 + 0.7;
+             const finalScale = scale * randomScaleFactor;
+             model.scale.set(finalScale, finalScale, finalScale);
+             // Pas besoin de stocker originalMaterial/Scale
+             return model;
+        }
+
+        // --- Shaders (avec interaction sélection) ---
+         const BlurShader = { /* ... (identique) ... */
+             uniforms: { 'tDiffuse': { value: null }, 'resolution': { value: new THREE.Vector2() }, 'blurRadius': { value: 3.0 } }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`, fragmentShader: ` uniform sampler2D tDiffuse; uniform vec2 resolution; uniform float blurRadius; varying vec2 vUv; void main() { vec2 texel = vec2( 1.0 / resolution.x, 1.0 / resolution.y ) * blurRadius; vec4 sum = vec4( 0.0 ); sum += texture2D( tDiffuse, vUv - texel * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, -texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv ); sum += texture2D( tDiffuse, vUv + vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(-texel.x, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + texel * 1.0 ); gl_FragColor = sum / 9.0; }`
+         };
+        const DitherShaderBW = { /* ... (identique) ... */
+            uniforms: { 'tDiffuse': { value: null }, 'ditherScale': { value: 4.0 }, 'u_isDarkMode': { value: 0.0 } }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`, fragmentShader: ` uniform sampler2D tDiffuse; uniform float ditherScale; uniform float u_isDarkMode; varying vec2 vUv; mat4 bayer4 = mat4(0.0,0.5,0.125,0.625, 0.75,0.25,0.875,0.375, 0.1875,0.6875,0.0625,0.5625, 0.9375,0.4375,0.8125,0.3125); float threshold(float val, float limit){ return step(limit, val); } void main() { vec4 color = texture2D( tDiffuse, vUv ); float gray = dot( color.rgb, vec3( 0.299, 0.587, 0.114 ) ); vec2 coord = floor( mod( gl_FragCoord.xy, ditherScale ) ); float limit = bayer4[int(coord.x)][int(coord.y)]; float dithered = threshold(gray, limit); float finalDithered = mix(1.0 - dithered, dithered, u_isDarkMode); gl_FragColor = vec4( vec3( finalDithered ), color.a ); }`
+        };
+        const SelectionContrastShader = { // Shader final avec effet sélection (Inversion + Contraste Fort)
+            uniforms: {
+                'tDiffuse': { value: null }, // Input: Dithered B&W
+                'contrast': { value: 4.0 }, // Contraste normal (augmenté)
+                'u_selectionBox': { value: new THREE.Vector4(0,0,0,0) },
+                'resolution': { value: new THREE.Vector2() },
+                'u_isDarkMode': { value: 0.0 }
+            },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
+            fragmentShader: `
+                uniform sampler2D tDiffuse;
+                uniform float contrast;
+                uniform vec4 u_selectionBox;
+                uniform vec2 resolution;
+                uniform float u_isDarkMode;
+                varying vec2 vUv;
+
+                bool isInBox(vec4 box) {
+                    return gl_FragCoord.x > box.x && gl_FragCoord.x < box.z &&
+                           gl_FragCoord.y > box.y && gl_FragCoord.y < box.w;
+                }
+
+                void main() {
+                    vec4 color = texture2D(tDiffuse, vUv);
+                    float ditheredVal = color.r; // Input est tramé N&B (0.0 ou 1.0)
+
+                    float finalVal;
+                    bool boxIsValid = u_selectionBox.z > u_selectionBox.x && u_selectionBox.w > u_selectionBox.y;
+
+                    if (boxIsValid && isInBox(u_selectionBox)) { // Effet dans la boîte
+                         // Inversion N/B + Contraste Max
+                         float invertedVal = 1.0 - ditheredVal;
+                         float contrastedInside = (invertedVal - 0.5) * 10.0 + 0.5; // Contraste très fort
+                         finalVal = clamp(contrastedInside, 0.0, 1.0);
+                    } else {
+                         // Effet hors boîte : Contraste normal
+                         float contrastedOutside = (ditheredVal - 0.5) * contrast + 0.5;
+                         finalVal = clamp(contrastedOutside, 0.0, 1.0);
+                    }
+
+                    gl_FragColor = vec4(vec3(finalVal), color.a);
+                }`
+        };
+
+
+        function init3DBackground() {
+            console.log("Initialisation Three.js v35...");
+            try {
+                const canvas = document.getElementById('bg-canvas');
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.z = 15;
+
+                renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0xffffff, 0);
+
+                // --- Éclairage ---
+                const ambientLight = new THREE.AmbientLight(0xcccccc, 0.3);
+                scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+                directionalLight.position.set(10, 15, 10);
+                scene.add(directionalLight);
+
+                // --- Post-processing Setup (Flou+++ -> Dither -> Contraste/Select+++) ---
+                composer = new EffectComposer(renderer);
+                const renderPass = new RenderPass(scene, camera);
+                composer.addPass(renderPass);
+
+                blurPass = new ShaderPass(BlurShader);
+                blurPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
+                blurPass.uniforms['blurRadius'].value = 3.0;
+                composer.addPass(blurPass);
+
+                ditherPass = new ShaderPass(DitherShaderBW);
+                const isInitiallyDark = document.body.classList.contains('dark-theme');
+                ditherPass.uniforms['u_isDarkMode'].value = isInitiallyDark ? 1.0 : 0.0;
+                composer.addPass(ditherPass);
+
+                selectionContrastPass = new ShaderPass(SelectionContrastShader);
+                selectionContrastPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
+                selectionContrastPass.uniforms['contrast'].value = 4.0;
+                selectionContrastPass.uniforms['u_isDarkMode'].value = isInitiallyDark ? 1.0 : 0.0;
+                composer.addPass(selectionContrastPass);
+                // --- Fin Post-processing Setup ---
+
+                const numModels = 15; // Garder un certain nombre de formes
+
+                // --- Création des Modèles (UNIQUEMENT TorusKnot + Échelle Aléatoire) ---
+                console.log(`Création de ${numModels} modèles TorusKnot...`);
+                for (let i = 0; i < numModels; i++) {
+                    const model = createModel(knotGeometry, 0.8);
+
+                    model.position.x = (Math.random() - 0.5) * 35;
+                    model.position.y = (Math.random() - 0.5) * 25;
+                    model.position.z = (Math.random() - 0.5) * 25 - 12;
+                    model.rotation.x = Math.random() * Math.PI * 2;
+                    model.rotation.y = Math.random() * Math.PI * 2;
+                    model.userData.rotationSpeed = (Math.random() - 0.5) * 0.015;
+
+                    defaultModels.push(model); // Ajouter à la liste pour l'animation
+                    scene.add(model);
+                }
+                console.log("Modèles créés.");
+                // --- Fin Création Modèles ---
+
+                // --- Placeholder pour chargement GLTF/OBJ ---
+                /* ... (identique) ... */
+                // --- Fin Placeholders ---
+
+
+                window.addEventListener('resize', onWindowResize, false);
+                window.addEventListener('mousemove', onMouseMoveForBlob, false);
+                animate();
+                console.log("Animation démarrée.");
+
+            } catch (error) { console.error("Erreur init Three.js:", error); }
+        }
+
+        function onWindowResize() {
+             if (!camera || !renderer || !composer) return;
+             camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+             renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
+             composer.passes.forEach(pass => {
+                 if (pass.uniforms && pass.uniforms.resolution) {
+                     pass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+                 }
+             });
+        }
+
+
+        // Listener SÉPARÉ juste pour le blob gaussien et le blob curseur
+        const cursorBlob = document.getElementById('cursor-blob');
+        // const gaussianBlob = document.getElementById('gaussian-blob'); // Supprimé
+        function onMouseMoveForBlob(event) {
+             if (cursorBlob) {
+                 cursorBlob.style.left = `${event.clientX}px`;
+                 cursorBlob.style.top = `${event.clientY}px`;
+             }
+             // Pas besoin de gérer gaussianBlob ici
+        }
+
+
+        function animate() { /* ... (identique) ... */
+            requestAnimationFrame(animate);
+            defaultModels.forEach(model => { model.rotation.z += model.userData.rotationSpeed; });
+            if (composer) { composer.render(); } else if (renderer && scene && camera) { renderer.render(scene, camera); }
+        }
+
+        // --- Content Visibility Logic (Supprimée) ---
+        // --- Project Detail View Logic (Supprimée) ---
+        // --- Hover Project Link Logic (Supprimée) ---
+
+
+        // --- Theme Toggle Logic ---
+        const themeToggleButton = document.getElementById('theme-toggle-button');
+        themeToggleButton.addEventListener('click', () => {
+            document.body.classList.toggle('dark-theme');
+            const isDarkMode = document.body.classList.contains('dark-theme');
+            // Mettre à jour l'uniforme du shader Dither
+            if (ditherPass && ditherPass.uniforms.u_isDarkMode) {
+                ditherPass.uniforms.u_isDarkMode.value = isDarkMode ? 1.0 : 0.0;
+                console.log("Dither dark mode uniform updated:", ditherPass.uniforms.u_isDarkMode.value);
+            }
+            // Mettre à jour aussi pour le shader de contraste/sélection
+             const selectionContrastPass = composer?.passes.find(pass => pass.uniforms.u_selectionBox);
+             if (selectionContrastPass && selectionContrastPass.uniforms.u_isDarkMode) {
+                 selectionContrastPass.uniforms.u_isDarkMode.value = isDarkMode ? 1.0 : 0.0;
+                 console.log("Contrast/Select dark mode uniform updated:", selectionContrastPass.uniforms.u_isDarkMode.value);
+             }
+        });
+
+
+        // Init Layout (Supprimée)
+
+        // Init 3D background
+        init3DBackground();
+        // initLayout(); // Plus besoin
+
+        // --- Selection Box Logic ---
+        const selectionBox = document.getElementById('selection-box');
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        // let selectionContrastPass = null; // Déjà déclaré globalement
+
+        document.addEventListener('mousedown', (e) => {
+            if (!composer) return;
+             // Assurer que la référence est à jour
+             if (!selectionContrastPass) {
+                 selectionContrastPass = composer.passes.find(pass => pass.uniforms.u_selectionBox);
+             }
+
+            // Ne pas démarrer si on clique sur un bouton ou le nom
+            if (e.target.closest('button, a, #nav-name')) {
+                return;
+            }
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            selectionBox.style.left = `${startX}px`;
+            selectionBox.style.top = `${startY}px`;
+            selectionBox.style.width = '0px';
+            selectionBox.style.height = '0px';
+            selectionBox.style.display = 'block';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || !selectionContrastPass) return;
+
+            const currentX = e.clientX;
+            const currentY = e.clientY;
+            const rectLeft = Math.min(startX, currentX);
+            const rectRight = Math.max(startX, currentX);
+            const rectTop = Math.min(startY, currentY); // Top Y écran
+            const rectBottom = Math.max(startY, currentY); // Bottom Y écran
+
+            // Mettre à jour la boîte CSS
+            selectionBox.style.left = `${rectLeft}px`;
+            selectionBox.style.top = `${rectTop}px`;
+            selectionBox.style.width = `${rectRight - rectLeft}px`;
+            selectionBox.style.height = `${rectBottom - rectTop}px`;
+
+            // Mettre à jour l'uniforme du shader
+            const rendererSize = new THREE.Vector2();
+            renderer.getSize(rendererSize);
+            const fragBottom = rendererSize.y - rectBottom;
+            const fragTop = rendererSize.y - rectTop;
+
+            selectionContrastPass.uniforms.u_selectionBox.value.set(rectLeft, fragBottom, rectRight, fragTop);
+            // Assurer que la résolution est à jour
+            if (selectionContrastPass.uniforms.resolution) {
+                selectionContrastPass.uniforms.resolution.value.set(rendererSize.x, rendererSize.y);
+            }
+             // console.log("Selection Box Uniform:", selectionContrastPass.uniforms.u_selectionBox.value); // Debug
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                selectionBox.style.display = 'none';
+                document.body.style.userSelect = '';
+                // Réinitialiser l'uniforme du shader
+                if (selectionContrastPass) {
+                    selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0);
+                }
+            }
+        });
+        // --- Fin Selection Box Logic ---
+
+
+    </script>
+
+</body>
+</html>
