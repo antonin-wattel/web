@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antonin Wattel - Under Construction</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <title>Portfolio Antonin Wattel - OBJ Loader</title> <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script type="importmap">
         {
             "imports": {
@@ -14,13 +13,13 @@
         }
     </script>
     <style>
-        /* Custom styles v35.1 - Under Construction Style Fix */
+        /* Custom styles v30.1 - CSS identique à v30 */
         :root {
             --accent-color: #FFFF00; /* Jaune */
             --bg-color: #ffffff;
             --text-color: #000000;
-            /* --box-bg-color: rgba(255, 255, 255, 0.8); */ /* Plus utilisé */
-            /* --nav-bg-color: rgba(255, 255, 255, 0.75); */ /* Plus utilisé */
+            --box-bg-color: rgba(255, 255, 255, 0.8);
+            --nav-bg-color: rgba(255, 255, 255, 0.75);
             --footer-bg-color: rgba(255, 255, 255, 0.8);
             --footer-text-color: #555;
             --border-color: #000;
@@ -30,78 +29,28 @@
             --custom-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 v20 M0 10 h20' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E") 10 10, crosshair;
             --custom-cursor-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 v20 M0 10 h20' stroke='%23FFF' stroke-width='1'/%3E%3C/svg%3E") 10 10, crosshair;
         }
-
-        /* Styles pour le thème sombre */
         body.dark-theme {
-            --bg-color: #000000; --text-color: #ffffff; /* --box-bg-color: rgba(10, 10, 10, 0.85); */
-            /* --nav-bg-color: rgba(10, 10, 10, 0.75); */ --footer-bg-color: rgba(10, 10, 10, 0.8);
+            --bg-color: #000000; --text-color: #ffffff; --box-bg-color: rgba(10, 10, 10, 0.85);
+            --nav-bg-color: rgba(10, 10, 10, 0.75); --footer-bg-color: rgba(10, 10, 10, 0.8);
             --footer-text-color: #aaa; --border-color: #fff; --selection-border: #ffffff;
             --selection-bg: rgba(255, 255, 0, 0.15); --cursor-blob-color: #ffffff;
              cursor: var(--custom-cursor-dark);
         }
         body.dark-theme ::selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
         body.dark-theme ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
-
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-smooth: never; -webkit-font-smoothing: none; cursor: var(--custom-cursor); transition: background-color 0.3s, color 0.3s; }
         ::selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
         ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
-
         #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0.9; }
-
-        #main-view-container { /* Plus besoin de gérer #project-detail-view */
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; visibility: visible; opacity: 1;
-        }
-
-        /* Style pour le message "Under Construction" (style titre) */
-        #construction-message {
-            position: absolute;
-            top: 12%; /* Positionné comme l'ancien titre */
-            left: 5%;
-            transform: none; /* Pas de centrage */
-            font-size: 12px; /* Taille réduite */
-            font-family: Arial, Helvetica, sans-serif; /* Police standard */
-            font-weight: normal; /* Pas gras */
-            color: var(--text-color);
-            text-shadow: none; /* Pas d'ombre */
-            z-index: 15;
-            text-align: left; /* Alignement gauche */
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            transition: color 0.3s;
-        }
-
-        .nav-item { /* Style commun pour les éléments de nav restants */
-            position: absolute; font-family: Arial, Helvetica, sans-serif;
-            font-size: 16px; font-weight: bold; cursor: pointer;
-            padding: 5px 7px; z-index: 15;
-            background-color: transparent; color: var(--text-color);
-            transition: color 0.1s linear;
-            border: none; text-decoration: none; white-space: nowrap;
-            overflow: visible;
-            cursor: inherit !important;
-        }
-
-         /* Style Nom (Times Italic Déformé) */
-         #nav-name {
-             font-family: 'Times New Roman', Times, serif; font-style: italic;
-             font-size: 34px; padding: 8px 12px; border: none;
-             position: absolute; /* Changé de relative */
-             top: 15px; left: 15px; /* Positionnement direct */
-             z-index: 16; transform: skewX(-5deg); text-shadow: none;
-             background-color: transparent; color: var(--text-color);
-             cursor: default;
-         }
-         #nav-name::before { display: none; }
-         #nav-name:hover { color: var(--accent-color); background-color: transparent; }
-
-        /* Positionnement (Seulement Nom et Bouton Thème) */
-        /* #nav-about, #nav-contact supprimés */
-
-        /* Footer */
+        #main-view-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; visibility: visible; opacity: 1; }
+        /* Style pour le message "Under Construction" */
+        #construction-message { position: absolute; top: 12%; left: 5%; transform: none; font-size: 12px; font-family: Arial, Helvetica, sans-serif; font-weight: normal; color: var(--text-color); text-shadow: none; z-index: 15; text-align: left; text-transform: uppercase; letter-spacing: 0.1em; transition: color 0.3s; }
+        .nav-item { position: absolute; font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: bold; cursor: pointer; padding: 5px 7px; z-index: 15; background-color: transparent; color: var(--text-color); transition: color 0.1s linear; border: none; text-decoration: none; white-space: nowrap; overflow: visible; cursor: inherit !important; }
+        /* Style Nom (Times Italic Déformé) */
+        #nav-name { font-family: 'Times New Roman', Times, serif; font-style: italic; font-size: 34px; padding: 8px 12px; border: none; position: absolute; top: 15px; left: 15px; z-index: 16; transform: skewX(-5deg); text-shadow: none; background-color: transparent; color: var(--text-color); cursor: default; }
+        #nav-name::before { display: none; }
+        #nav-name:hover { color: var(--accent-color); background-color: transparent; }
         footer { position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; padding: 5px 0; font-size: 10px; color: var(--footer-text-color); background-color: var(--footer-bg-color); z-index: 100; transition: background-color 0.3s, color 0.3s; }
-
-        /* Bouton Dark Mode Icones (plus petit) */
         #theme-toggle-button { position: fixed; top: 15px; right: 15px; z-index: 110; padding: 4px; line-height: 0; background-color: var(--bg-color); color: var(--text-color); border: 1px solid var(--text-color); transition: background-color 0.3s, color 0.3s, border-color 0.3s; cursor: inherit !important; }
         #theme-toggle-button svg { width: 16px; height: 16px; vertical-align: top; }
         #theme-toggle-button .sun-icon svg { stroke: currentColor; }
@@ -110,16 +59,11 @@
         #theme-toggle-button .moon-icon { display: none; }
         body.dark-theme #theme-toggle-button .moon-icon { display: inline-block; }
         body.dark-theme #theme-toggle-button .sun-icon { display: none; }
-
-        /* Blob Gaussien (Inutile car pas de hover projet) */
-        #gaussian-blob { display: none; }
-
-        /* Boîte de sélection (Clic+Glisser) */
         #selection-box { position: fixed; border: 1px dashed var(--selection-border); background-color: var(--selection-bg); pointer-events: none; display: none; z-index: 200; transition: border-color 0.3s, background-color 0.3s; }
         body.dark-theme #selection-box { border-color: var(--accent-color); background-color: rgba(255, 255, 0, 0.1); }
-
-        /* Petit blob noir/blanc qui suit le curseur */
         #cursor-blob { position: fixed; width: 8px; height: 8px; background-color: var(--cursor-blob-color); border-radius: 50%; filter: blur(1px); pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background-color 0.3s; }
+        /* Blob Gaussien hover désactivé */
+        #gaussian-blob { display: none; }
 
     </style>
 </head>
@@ -161,9 +105,10 @@
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-        // Loaders non utilisés pour l'instant mais gardés
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+        console.log("Three.js version:", THREE.REVISION);
 
         // --- Données des Projets (non utilisées ici) ---
         // const projectData = { ... };
@@ -174,21 +119,10 @@
         let selectionContrastPass, ditherPass, blurPass;
         // let hoverMaterial; // Plus nécessaire
 
-        // UNIQUEMENT TorusKnot
-        const knotGeometry = new THREE.TorusKnotGeometry(1.5, 0.5, 64, 8);
+        // Matériau Standard GRIS FONCÉ (sera cloné pour chaque modèle OBJ)
         const modelBaseMaterial = new THREE.MeshStandardMaterial({
              color: 0x555555, metalness: 0.1, roughness: 0.9
         });
-
-        function createModel(geometry, scale = 1.0) {
-             const materialInstance = modelBaseMaterial.clone();
-             const model = new THREE.Mesh(geometry, materialInstance);
-             const randomScaleFactor = Math.random() * 0.4 + 0.7;
-             const finalScale = scale * randomScaleFactor;
-             model.scale.set(finalScale, finalScale, finalScale);
-             // Pas besoin de stocker originalMaterial/Scale
-             return model;
-        }
 
         // --- Shaders (avec interaction sélection) ---
          const BlurShader = { /* ... (identique) ... */
@@ -241,9 +175,19 @@
                 }`
         };
 
+        // --- Liste des modèles OBJ à charger ---
+        // IMPORTANT: Mettez à jour ce tableau avec les chemins relatifs corrects
+        // vers vos fichiers .obj dans le dossier '3dmodels/' sur GitHub Pages.
+        const objModelPaths = [
+            '3dmodels/animal_funky.obj',
+            '3dmodels/buddha_rose.obj',
+            // Ajoutez d'autres chemins ici si nécessaire
+            // '3dmodels/autre_modele.obj',
+        ];
+
 
         function init3DBackground() {
-            console.log("Initialisation Three.js v35...");
+            console.log("Initialisation Three.js OBJ Loader...");
             try {
                 const canvas = document.getElementById('bg-canvas');
                 scene = new THREE.Scene();
@@ -283,30 +227,51 @@
                 composer.addPass(selectionContrastPass);
                 // --- Fin Post-processing Setup ---
 
-                const numModels = 15; // Garder un certain nombre de formes
+                // --- Chargement des Modèles OBJ ---
+                const loaderOBJ = new OBJLoader();
+                console.log(`Chargement de ${objModelPaths.length} modèles OBJ...`);
 
-                // --- Création des Modèles (UNIQUEMENT TorusKnot + Échelle Aléatoire) ---
-                console.log(`Création de ${numModels} modèles TorusKnot...`);
-                for (let i = 0; i < numModels; i++) {
-                    const model = createModel(knotGeometry, 0.8);
+                objModelPaths.forEach(path => {
+                    loaderOBJ.load(
+                        path,
+                        // Fonction onLoadCallback
+                        function (object) {
+                            console.log("Modèle OBJ chargé:", path, object);
+                            // Appliquer le matériau et configurer
+                            object.traverse(function (child) {
+                                if (child.isMesh) {
+                                    child.material = modelBaseMaterial.clone(); // Appliquer matériau gris
+                                }
+                            });
 
-                    model.position.x = (Math.random() - 0.5) * 35;
-                    model.position.y = (Math.random() - 0.5) * 25;
-                    model.position.z = (Math.random() - 0.5) * 25 - 12;
-                    model.rotation.x = Math.random() * Math.PI * 2;
-                    model.rotation.y = Math.random() * Math.PI * 2;
-                    model.userData.rotationSpeed = (Math.random() - 0.5) * 0.015;
+                            // Échelle et Position aléatoires
+                            const randomScaleFactor = Math.random() * 0.4 + 0.7; // 0.7 à 1.1
+                            const baseScale = 3.0; // Ajustez si vos OBJ sont très grands/petits
+                            const finalScale = baseScale * randomScaleFactor;
+                            object.scale.set(finalScale, finalScale, finalScale);
 
-                    defaultModels.push(model); // Ajouter à la liste pour l'animation
-                    scene.add(model);
-                }
-                console.log("Modèles créés.");
-                // --- Fin Création Modèles ---
+                            object.position.x = (Math.random() - 0.5) * 35;
+                            object.position.y = (Math.random() - 0.5) * 25;
+                            object.position.z = (Math.random() - 0.5) * 25 - 12;
+                            object.rotation.x = Math.random() * Math.PI * 2;
+                            object.rotation.y = Math.random() * Math.PI * 2;
+                            object.userData.rotationSpeed = (Math.random() - 0.5) * 0.015;
 
-                // --- Placeholder pour chargement GLTF/OBJ ---
-                /* ... (identique) ... */
-                // --- Fin Placeholders ---
+                            defaultModels.push(object); // Ajouter pour l'animation
+                            scene.add(object);
+                        },
+                        // onProgress (optionnel)
+                        undefined,
+                        // onError
+                        function (error) {
+                            console.error(`Erreur chargement modèle OBJ ${path}:`, error);
+                        }
+                    );
+                });
+                 // --- Fin Chargement Modèles ---
 
+                // --- Placeholder pour chargement GLTF ---
+                /* ... (gardé mais non prioritaire ici) ... */
 
                 window.addEventListener('resize', onWindowResize, false);
                 window.addEventListener('mousemove', onMouseMoveForBlob, false);
@@ -327,8 +292,7 @@
              });
         }
 
-
-        // Listener SÉPARÉ juste pour le blob gaussien et le blob curseur
+        // Listener SÉPARÉ juste pour le blob curseur
         const cursorBlob = document.getElementById('cursor-blob');
         // const gaussianBlob = document.getElementById('gaussian-blob'); // Supprimé
         function onMouseMoveForBlob(event) {
@@ -336,7 +300,7 @@
                  cursorBlob.style.left = `${event.clientX}px`;
                  cursorBlob.style.top = `${event.clientY}px`;
              }
-             // Pas besoin de gérer gaussianBlob ici
+             // Pas de blob gaussien à gérer ici
         }
 
 
@@ -346,10 +310,7 @@
             if (composer) { composer.render(); } else if (renderer && scene && camera) { renderer.render(scene, camera); }
         }
 
-        // --- Content Visibility Logic (Supprimée) ---
-        // --- Project Detail View Logic (Supprimée) ---
-        // --- Hover Project Link Logic (Supprimée) ---
-
+        // --- Logique UI (Theme Toggle, Selection Box) ---
 
         // --- Theme Toggle Logic ---
         const themeToggleButton = document.getElementById('theme-toggle-button');
@@ -369,13 +330,6 @@
              }
         });
 
-
-        // Init Layout (Supprimée)
-
-        // Init 3D background
-        init3DBackground();
-        // initLayout(); // Plus besoin
-
         // --- Selection Box Logic ---
         const selectionBox = document.getElementById('selection-box');
         let isDragging = false;
@@ -384,11 +338,9 @@
 
         document.addEventListener('mousedown', (e) => {
             if (!composer) return;
-             // Assurer que la référence est à jour
-             if (!selectionContrastPass) {
+             if (!selectionContrastPass) { // Initialiser si besoin
                  selectionContrastPass = composer.passes.find(pass => pass.uniforms.u_selectionBox);
              }
-
             // Ne pas démarrer si on clique sur un bouton ou le nom
             if (e.target.closest('button, a, #nav-name')) {
                 return;
@@ -411,27 +363,23 @@
             const currentY = e.clientY;
             const rectLeft = Math.min(startX, currentX);
             const rectRight = Math.max(startX, currentX);
-            const rectTop = Math.min(startY, currentY); // Top Y écran
-            const rectBottom = Math.max(startY, currentY); // Bottom Y écran
+            const rectTop = Math.min(startY, currentY);
+            const rectBottom = Math.max(startY, currentY);
 
-            // Mettre à jour la boîte CSS
             selectionBox.style.left = `${rectLeft}px`;
             selectionBox.style.top = `${rectTop}px`;
             selectionBox.style.width = `${rectRight - rectLeft}px`;
             selectionBox.style.height = `${rectBottom - rectTop}px`;
 
-            // Mettre à jour l'uniforme du shader
             const rendererSize = new THREE.Vector2();
             renderer.getSize(rendererSize);
             const fragBottom = rendererSize.y - rectBottom;
             const fragTop = rendererSize.y - rectTop;
 
             selectionContrastPass.uniforms.u_selectionBox.value.set(rectLeft, fragBottom, rectRight, fragTop);
-            // Assurer que la résolution est à jour
             if (selectionContrastPass.uniforms.resolution) {
                 selectionContrastPass.uniforms.resolution.value.set(rendererSize.x, rendererSize.y);
             }
-             // console.log("Selection Box Uniform:", selectionContrastPass.uniforms.u_selectionBox.value); // Debug
         });
 
         document.addEventListener('mouseup', () => {
@@ -439,7 +387,6 @@
                 isDragging = false;
                 selectionBox.style.display = 'none';
                 document.body.style.userSelect = '';
-                // Réinitialiser l'uniforme du shader
                 if (selectionContrastPass) {
                     selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0);
                 }
@@ -447,6 +394,8 @@
         });
         // --- Fin Selection Box Logic ---
 
+        // Init 3D background
+        init3DBackground();
 
     </script>
 
