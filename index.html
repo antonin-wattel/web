@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio Antonin Wattel - OBJ Loader</title> <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <title>Portfolio Antonin Wattel - OBJ Loader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script type="importmap">
         {
             "imports": {
@@ -43,10 +44,8 @@
         ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
         #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0.9; }
         #main-view-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; visibility: visible; opacity: 1; }
-        /* Style pour le message "Under Construction" */
         #construction-message { position: absolute; top: 12%; left: 5%; transform: none; font-size: 12px; font-family: Arial, Helvetica, sans-serif; font-weight: normal; color: var(--text-color); text-shadow: none; z-index: 15; text-align: left; text-transform: uppercase; letter-spacing: 0.1em; transition: color 0.3s; }
         .nav-item { position: absolute; font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: bold; cursor: pointer; padding: 5px 7px; z-index: 15; background-color: transparent; color: var(--text-color); transition: color 0.1s linear; border: none; text-decoration: none; white-space: nowrap; overflow: visible; cursor: inherit !important; }
-        /* Style Nom (Times Italic Déformé) */
         #nav-name { font-family: 'Times New Roman', Times, serif; font-style: italic; font-size: 34px; padding: 8px 12px; border: none; position: absolute; top: 15px; left: 15px; z-index: 16; transform: skewX(-5deg); text-shadow: none; background-color: transparent; color: var(--text-color); cursor: default; }
         #nav-name::before { display: none; }
         #nav-name:hover { color: var(--accent-color); background-color: transparent; }
@@ -92,7 +91,7 @@
         <span id="nav-name" class="nav-item">Antonin Wattel</span>
         <div id="construction-message">UNDER CONSTRUCTION</div>
 
-        </div>
+    </div>
 
     <footer>
         © 2025 Antonin Wattel. Tous droits réservés.
@@ -106,18 +105,14 @@
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'; // Assurez-vous que OBJLoader est importé
 
         console.log("Three.js version:", THREE.REVISION);
-
-        // --- Données des Projets (non utilisées ici) ---
-        // const projectData = { ... };
 
         // --- three.js Background Animation ---
         let scene, camera, renderer, composer, defaultModels = [];
         const clock = new THREE.Clock();
         let selectionContrastPass, ditherPass, blurPass;
-        // let hoverMaterial; // Plus nécessaire
 
         // Matériau Standard GRIS FONCÉ (sera cloné pour chaque modèle OBJ)
         const modelBaseMaterial = new THREE.MeshStandardMaterial({
@@ -176,18 +171,20 @@
         };
 
         // --- Liste des modèles OBJ à charger ---
-        // IMPORTANT: Mettez à jour ce tableau avec les chemins relatifs corrects
-        // vers vos fichiers .obj dans le dossier '3dmodels/' sur GitHub Pages.
+        // !!! IMPORTANT !!!
+        // Modifiez ce tableau pour lister les chemins RELATIFS vers VOS fichiers .obj
+        // Ces fichiers doivent être dans un dossier nommé '3dmodels' à côté de votre index.html
         const objModelPaths = [
-            '3dmodels/animal_funky.obj',
-            '3dmodels/buddha_rose.obj',
-            // Ajoutez d'autres chemins ici si nécessaire
-            // '3dmodels/autre_modele.obj',
+            '3dmodels/poisson_pik_jaune.obj',
+            '3dmodels/raie_jaune.obj',
+            '3dmodels/reptile_fun.obj',
+            '3dmodels/rhino_legumes.obj'
+            // '3dmodels/votre_autre_modele.obj', // Ajoutez les vôtres ici
         ];
 
 
         function init3DBackground() {
-            console.log("Initialisation Three.js OBJ Loader...");
+            console.log("Initialisation Three.js OBJ Loader v1.1...");
             try {
                 const canvas = document.getElementById('bg-canvas');
                 scene = new THREE.Scene();
@@ -229,42 +226,52 @@
 
                 // --- Chargement des Modèles OBJ ---
                 const loaderOBJ = new OBJLoader();
-                console.log(`Chargement de ${objModelPaths.length} modèles OBJ...`);
+                console.log(`Tentative de chargement de ${objModelPaths.length} modèles OBJ...`);
 
                 objModelPaths.forEach(path => {
                     loaderOBJ.load(
                         path,
                         // Fonction onLoadCallback
-                        function (object) {
-                            console.log("Modèle OBJ chargé:", path, object);
+                        function (object) { // object est un THREE.Group
+                            console.log("Modèle OBJ chargé:", path);
                             // Appliquer le matériau et configurer
                             object.traverse(function (child) {
                                 if (child.isMesh) {
-                                    child.material = modelBaseMaterial.clone(); // Appliquer matériau gris
+                                    child.material = modelBaseMaterial.clone(); // Appliquer matériau gris CLONE
                                 }
                             });
 
                             // Échelle et Position aléatoires
-                            const randomScaleFactor = Math.random() * 0.4 + 0.7; // 0.7 à 1.1
-                            const baseScale = 3.0; // Ajustez si vos OBJ sont très grands/petits
+                            const randomScaleFactor = Math.random() * 0.4 + 0.7;
+                            const baseScale = 5.0; // Augmenter l'échelle de base si les OBJ sont petits
                             const finalScale = baseScale * randomScaleFactor;
                             object.scale.set(finalScale, finalScale, finalScale);
 
-                            object.position.x = (Math.random() - 0.5) * 35;
-                            object.position.y = (Math.random() - 0.5) * 25;
-                            object.position.z = (Math.random() - 0.5) * 25 - 12;
+                            object.position.x = (Math.random() - 0.5) * 40; // Augmenter la dispersion
+                            object.position.y = (Math.random() - 0.5) * 30;
+                            object.position.z = (Math.random() - 0.5) * 30 - 15;
                             object.rotation.x = Math.random() * Math.PI * 2;
                             object.rotation.y = Math.random() * Math.PI * 2;
                             object.userData.rotationSpeed = (Math.random() - 0.5) * 0.015;
 
                             defaultModels.push(object); // Ajouter pour l'animation
                             scene.add(object);
+                            console.log(`Modèle ${path} ajouté à la scène.`);
                         },
                         // onProgress (optionnel)
                         undefined,
                         // onError
                         function (error) {
                             console.error(`Erreur chargement modèle OBJ ${path}:`, error);
+                            // Afficher un message d'erreur plus visible ?
+                            const errDiv = document.createElement('div');
+                            errDiv.textContent = `Erreur: Impossible de charger ${path}. Vérifiez le chemin et la console.`;
+                            errDiv.style.color = 'red';
+                            errDiv.style.position = 'fixed';
+                            errDiv.style.bottom = '30px';
+                            errDiv.style.left = '10px';
+                            errDiv.style.zIndex = '1001';
+                            document.body.appendChild(errDiv);
                         }
                     );
                 });
@@ -304,10 +311,19 @@
         }
 
 
-        function animate() { /* ... (identique) ... */
+        function animate() {
             requestAnimationFrame(animate);
-            defaultModels.forEach(model => { model.rotation.z += model.userData.rotationSpeed; });
-            if (composer) { composer.render(); } else if (renderer && scene && camera) { renderer.render(scene, camera); }
+            // Rotation modèles (maintenant OBJ)
+            defaultModels.forEach(model => {
+                 if(model && model.userData && typeof model.userData.rotationSpeed === 'number') {
+                    model.rotation.z += model.userData.rotationSpeed;
+                 }
+            });
+            if (composer) {
+                 composer.render();
+            } else if (renderer && scene && camera) {
+                 renderer.render(scene, camera);
+            }
         }
 
         // --- Logique UI (Theme Toggle, Selection Box) ---
@@ -320,13 +336,13 @@
             // Mettre à jour l'uniforme du shader Dither
             if (ditherPass && ditherPass.uniforms.u_isDarkMode) {
                 ditherPass.uniforms.u_isDarkMode.value = isDarkMode ? 1.0 : 0.0;
-                console.log("Dither dark mode uniform updated:", ditherPass.uniforms.u_isDarkMode.value);
+                // console.log("Dither dark mode uniform updated:", ditherPass.uniforms.u_isDarkMode.value);
             }
             // Mettre à jour aussi pour le shader de contraste/sélection
              const selectionContrastPass = composer?.passes.find(pass => pass.uniforms.u_selectionBox);
              if (selectionContrastPass && selectionContrastPass.uniforms.u_isDarkMode) {
                  selectionContrastPass.uniforms.u_isDarkMode.value = isDarkMode ? 1.0 : 0.0;
-                 console.log("Contrast/Select dark mode uniform updated:", selectionContrastPass.uniforms.u_isDarkMode.value);
+                 // console.log("Contrast/Select dark mode uniform updated:", selectionContrastPass.uniforms.u_isDarkMode.value);
              }
         });
 
