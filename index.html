@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio Antonin Wattel - OBJ Loader</title>
+    <title>Portfolio Antonin Wattel - Drag & Drop (v1.7 Corrected)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script type="importmap">
         {
@@ -14,28 +14,21 @@
         }
     </script>
     <style>
-        /* Custom styles v30.1 - CSS identique à v30 */
+        /* Custom styles v1.7 */
+        /* Reminder: Check YOUR lines 18 & 21 for empty CSS rulesets like 'selector {}' and remove them */
         :root {
-            --accent-color: #FFFF00; /* Jaune */
-            --bg-color: #ffffff;
-            --text-color: #000000;
-            --box-bg-color: rgba(255, 255, 255, 0.8);
-            --nav-bg-color: rgba(255, 255, 255, 0.75);
-            --footer-bg-color: rgba(255, 255, 255, 0.8);
-            --footer-text-color: #555;
-            --border-color: #000;
-            --selection-border: #000000;
-            --selection-bg: rgba(255, 255, 0, 0.15);
-            --cursor-blob-color: #000000;
+            --accent-color: #FFFF00; --bg-color: #ffffff; --text-color: #000000;
+            --box-bg-color: rgba(255, 255, 255, 0.8); --nav-bg-color: rgba(255, 255, 255, 0.75);
+            --footer-text-color: #555; --border-color: #000; --selection-border: #000000;
+            --selection-bg: rgba(255, 255, 0, 0.15); --cursor-blob-color: #000000;
             --custom-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 v20 M0 10 h20' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E") 10 10, crosshair;
             --custom-cursor-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 v20 M0 10 h20' stroke='%23FFF' stroke-width='1'/%3E%3C/svg%3E") 10 10, crosshair;
         }
         body.dark-theme {
             --bg-color: #000000; --text-color: #ffffff; --box-bg-color: rgba(10, 10, 10, 0.85);
-            --nav-bg-color: rgba(10, 10, 10, 0.75); --footer-bg-color: rgba(10, 10, 10, 0.8);
-            --footer-text-color: #aaa; --border-color: #fff; --selection-border: #ffffff;
-            --selection-bg: rgba(255, 255, 0, 0.15); --cursor-blob-color: #ffffff;
-             cursor: var(--custom-cursor-dark);
+            --nav-bg-color: rgba(10, 10, 10, 0.75); --footer-text-color: #aaa;
+            --border-color: #fff; --selection-border: #ffffff; --selection-bg: rgb(255, 255, 0);
+            --cursor-blob-color: #ffffff; cursor: var(--custom-cursor-dark);
         }
         body.dark-theme ::selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
         body.dark-theme ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
@@ -44,12 +37,12 @@
         ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
         #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0.9; }
         #main-view-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; visibility: visible; opacity: 1; }
-        #construction-message { position: absolute; top: 12%; left: 5%; transform: none; font-size: 12px; font-family: Arial, Helvetica, sans-serif; font-weight: normal; color: var(--text-color); text-shadow: none; z-index: 15; text-align: left; text-transform: uppercase; letter-spacing: 0.1em; transition: color 0.3s; }
+        #construction-message { position: absolute; top: 75px; left: 15px; transform: none; font-size: 11px; font-family: Arial, Helvetica, sans-serif; font-weight: normal; color: var(--text-color); text-shadow: none; z-index: 15; text-align: left; text-transform: uppercase; letter-spacing: 0.1em; transition: color 0.3s; }
         .nav-item { position: absolute; font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: bold; cursor: pointer; padding: 5px 7px; z-index: 15; background-color: transparent; color: var(--text-color); transition: color 0.1s linear; border: none; text-decoration: none; white-space: nowrap; overflow: visible; cursor: inherit !important; }
-        #nav-name { font-family: 'Times New Roman', Times, serif; font-style: italic; font-size: 34px; padding: 8px 12px; border: none; position: absolute; top: 15px; left: 15px; z-index: 16; transform: skewX(-5deg); text-shadow: none; background-color: transparent; color: var(--text-color); cursor: default; }
+        #nav-name { font-family: 'Times New Roman', Times, serif; font-style: italic; font-size: 22px; padding: 5px 8px; border: none; position: absolute; top: 15px; left: 15px; z-index: 16; transform: skewX(-5deg); text-shadow: none; background-color: transparent; color: var(--text-color); cursor: default; }
         #nav-name::before { display: none; }
         #nav-name:hover { color: var(--accent-color); background-color: transparent; }
-        footer { position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; padding: 5px 0; font-size: 10px; color: var(--footer-text-color); background-color: var(--footer-bg-color); z-index: 100; transition: background-color 0.3s, color 0.3s; }
+        footer { position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; padding: 5px 0; font-size: 10px; color: var(--footer-text-color); z-index: 100; transition: color 0.3s; border: none; } /* No background */
         #theme-toggle-button { position: fixed; top: 15px; right: 15px; z-index: 110; padding: 4px; line-height: 0; background-color: var(--bg-color); color: var(--text-color); border: 1px solid var(--text-color); transition: background-color 0.3s, color 0.3s, border-color 0.3s; cursor: inherit !important; }
         #theme-toggle-button svg { width: 16px; height: 16px; vertical-align: top; }
         #theme-toggle-button .sun-icon svg { stroke: currentColor; }
@@ -61,369 +54,292 @@
         #selection-box { position: fixed; border: 1px dashed var(--selection-border); background-color: var(--selection-bg); pointer-events: none; display: none; z-index: 200; transition: border-color 0.3s, background-color 0.3s; }
         body.dark-theme #selection-box { border-color: var(--accent-color); background-color: rgba(255, 255, 0, 0.1); }
         #cursor-blob { position: fixed; width: 8px; height: 8px; background-color: var(--cursor-blob-color); border-radius: 50%; filter: blur(1px); pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background-color 0.3s; }
-        /* Blob Gaussien hover désactivé */
         #gaussian-blob { display: none; }
-
     </style>
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
     <div id="selection-box"></div>
     <div id="cursor-blob"></div>
-
     <div id="main-view-container">
         <button id="theme-toggle-button" title="Changer le thème">
-             <span class="sun-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="5"></circle>
-                    <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                    <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                </svg>
-            </span>
-            <span class="moon-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                </svg>
-            </span>
+             <span class="sun-icon"> <svg>...</svg> </span>
+             <span class="moon-icon"> <svg>...</svg> </span>
         </button>
         <span id="nav-name" class="nav-item">Antonin Wattel</span>
         <div id="construction-message">UNDER CONSTRUCTION</div>
-
     </div>
-
     <footer>
-        © 2025 Antonin Wattel. Tous droits réservés.
+         © 2025 Antonin Wattel. Tous droits réservés.
     </footer>
 
-
     <script type="module">
-        // --- Imports Three.js ---
+        // --- Imports ---
         import * as THREE from 'three';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'; // Assurez-vous que OBJLoader est importé
+        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+        import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 
         console.log("Three.js version:", THREE.REVISION);
 
-        // --- three.js Background Animation ---
+        // --- Globals ---
         let scene, camera, renderer, composer, defaultModels = [];
         const clock = new THREE.Clock();
         let selectionContrastPass, ditherPass, blurPass;
+        let raycaster;
+        let mouse;
+        let currentlyHoveredGroup = null;
+        const defaultMaterialColor = new THREE.Color(0x888888);
 
-        // Matériau Standard GRIS FONCÉ (sera cloné pour chaque modèle OBJ)
-        const modelBaseMaterial = new THREE.MeshStandardMaterial({
-             color: 0x555555, metalness: 0.1, roughness: 0.9
-        });
+        // --- Interaction State ---
+        let isDraggingObject = false;
+        let draggedObject = null;
+        const dragPlane = new THREE.Plane();
+        const intersectionPoint = new THREE.Vector3();
+        const dragOffset = new THREE.Vector3();
+        const objectVelocity = new THREE.Vector3();
+        const dampingFactor = 0.94;
+        const velocityStopThreshold = 0.001;
+        const rotationDampingFactor = 0.08;
+        const rotationStopThreshold = 0.0001;
+        let isDraggingSelection = false;
+        let startX = 0, startY = 0;
+        const selectionBox = document.getElementById('selection-box');
 
-        // --- Shaders (avec interaction sélection) ---
-         const BlurShader = { /* ... (identique) ... */
-             uniforms: { 'tDiffuse': { value: null }, 'resolution': { value: new THREE.Vector2() }, 'blurRadius': { value: 3.0 } }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`, fragmentShader: ` uniform sampler2D tDiffuse; uniform vec2 resolution; uniform float blurRadius; varying vec2 vUv; void main() { vec2 texel = vec2( 1.0 / resolution.x, 1.0 / resolution.y ) * blurRadius; vec4 sum = vec4( 0.0 ); sum += texture2D( tDiffuse, vUv - texel * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, -texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv ); sum += texture2D( tDiffuse, vUv + vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(-texel.x, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + texel * 1.0 ); gl_FragColor = sum / 9.0; }`
-         };
-        const DitherShaderBW = { /* ... (identique) ... */
-            uniforms: { 'tDiffuse': { value: null }, 'ditherScale': { value: 4.0 }, 'u_isDarkMode': { value: 0.0 } }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`, fragmentShader: ` uniform sampler2D tDiffuse; uniform float ditherScale; uniform float u_isDarkMode; varying vec2 vUv; mat4 bayer4 = mat4(0.0,0.5,0.125,0.625, 0.75,0.25,0.875,0.375, 0.1875,0.6875,0.0625,0.5625, 0.9375,0.4375,0.8125,0.3125); float threshold(float val, float limit){ return step(limit, val); } void main() { vec4 color = texture2D( tDiffuse, vUv ); float gray = dot( color.rgb, vec3( 0.299, 0.587, 0.114 ) ); vec2 coord = floor( mod( gl_FragCoord.xy, ditherScale ) ); float limit = bayer4[int(coord.x)][int(coord.y)]; float dithered = threshold(gray, limit); float finalDithered = mix(1.0 - dithered, dithered, u_isDarkMode); gl_FragColor = vec4( vec3( finalDithered ), color.a ); }`
-        };
-        const SelectionContrastShader = { // Shader final avec effet sélection (Inversion + Contraste Fort)
-            uniforms: {
-                'tDiffuse': { value: null }, // Input: Dithered B&W
-                'contrast': { value: 4.0 }, // Contraste normal (augmenté)
-                'u_selectionBox': { value: new THREE.Vector4(0,0,0,0) },
-                'resolution': { value: new THREE.Vector2() },
-                'u_isDarkMode': { value: 0.0 }
-            },
+        // --- Shaders (v1.7 - Declared ONCE) ---
+        const BlurShader = {
+            uniforms: { 'tDiffuse': { value: null }, 'resolution': { value: new THREE.Vector2() }, 'blurRadius': { value: 2.0 } },
             vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
-            fragmentShader: `
-                uniform sampler2D tDiffuse;
-                uniform float contrast;
-                uniform vec4 u_selectionBox;
-                uniform vec2 resolution;
-                uniform float u_isDarkMode;
-                varying vec2 vUv;
-
-                bool isInBox(vec4 box) {
-                    return gl_FragCoord.x > box.x && gl_FragCoord.x < box.z &&
-                           gl_FragCoord.y > box.y && gl_FragCoord.y < box.w;
-                }
-
-                void main() {
-                    vec4 color = texture2D(tDiffuse, vUv);
-                    float ditheredVal = color.r; // Input est tramé N&B (0.0 ou 1.0)
-
-                    float finalVal;
-                    bool boxIsValid = u_selectionBox.z > u_selectionBox.x && u_selectionBox.w > u_selectionBox.y;
-
-                    if (boxIsValid && isInBox(u_selectionBox)) { // Effet dans la boîte
-                         // Inversion N/B + Contraste Max
-                         float invertedVal = 1.0 - ditheredVal;
-                         float contrastedInside = (invertedVal - 0.5) * 10.0 + 0.5; // Contraste très fort
-                         finalVal = clamp(contrastedInside, 0.0, 1.0);
-                    } else {
-                         // Effet hors boîte : Contraste normal
-                         float contrastedOutside = (ditheredVal - 0.5) * contrast + 0.5;
-                         finalVal = clamp(contrastedOutside, 0.0, 1.0);
-                    }
-
-                    gl_FragColor = vec4(vec3(finalVal), color.a);
-                }`
+            fragmentShader: ` uniform sampler2D tDiffuse; uniform vec2 resolution; uniform float blurRadius; varying vec2 vUv; void main() { vec2 texel = vec2( 1.0 / resolution.x, 1.0 / resolution.y ) * blurRadius; vec4 sum = vec4( 0.0 ); sum += texture2D( tDiffuse, vUv - texel * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, -texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv ); sum += texture2D( tDiffuse, vUv + vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(-texel.x, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + texel * 1.0 ); gl_FragColor = sum / 9.0; }`
+        };
+        const DitherShaderColor = {
+            uniforms: { 'tDiffuse': { value: null }, 'ditherScale': { value: 4.0 }, },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
+            fragmentShader: ` uniform sampler2D tDiffuse; uniform float ditherScale; varying vec2 vUv; mat4 bayer4 = mat4( 0.0, 0.5, 0.125, 0.625, 0.75, 0.25, 0.875, 0.375, 0.1875, 0.6875, 0.0625, 0.5625, 0.9375, 0.4375, 0.8125, 0.3125 ); float threshold(float val, float limit){ return step(limit, val); } void main() { vec4 color = texture2D( tDiffuse, vUv ); vec2 coord = floor( mod( gl_FragCoord.xy, ditherScale ) ); float limit = bayer4[int(coord.x)][int(coord.y)]; float ditheredR = threshold( color.r, limit ); float ditheredG = threshold( color.g, limit ); float ditheredB = threshold( color.b, limit ); vec3 ditheredColor = vec3(ditheredR, ditheredG, ditheredB); gl_FragColor = vec4( ditheredColor, color.a ); }`
+        };
+        const SelectionContrastShader = {
+            uniforms: { 'tDiffuse': { value: null }, 'contrast': { value: 3.0 }, 'u_selectionBox': { value: new THREE.Vector4(0,0,0,0) }, 'resolution': { value: new THREE.Vector2() }, },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
+            fragmentShader: ` uniform sampler2D tDiffuse; uniform float contrast; uniform vec4 u_selectionBox; uniform vec2 resolution; varying vec2 vUv; bool isInBox(vec4 box) { return gl_FragCoord.x >= box.x && gl_FragCoord.x <= box.z && gl_FragCoord.y >= box.y && gl_FragCoord.y <= box.w; } float applyContrast(float colorVal, float contrastFactor) { return clamp((colorVal - 0.5) * contrastFactor + 0.5, 0.0, 1.0); } void main() { vec4 ditheredInputColor = texture2D(tDiffuse, vUv); vec3 finalColor; bool boxIsValid = u_selectionBox.z > u_selectionBox.x && u_selectionBox.w > u_selectionBox.y; if (boxIsValid && isInBox(u_selectionBox)) { vec3 invertedColor = vec3(1.0) - ditheredInputColor.rgb; finalColor.r = applyContrast(invertedColor.r, 10.0); finalColor.g = applyContrast(invertedColor.g, 10.0); finalColor.b = applyContrast(invertedColor.b, 10.0); } else { finalColor.r = applyContrast(ditheredInputColor.r, contrast); finalColor.g = applyContrast(ditheredInputColor.g, contrast); finalColor.b = applyContrast(ditheredInputColor.b, contrast); } gl_FragColor = vec4(finalColor, ditheredInputColor.a); }`
         };
 
-        // --- Liste des modèles OBJ à charger ---
-        // !!! IMPORTANT !!!
-        // Modifiez ce tableau pour lister les chemins RELATIFS vers VOS fichiers .obj
-        // Ces fichiers doivent être dans un dossier nommé '3dmodels' à côté de votre index.html
+        // --- Model Paths ---
         const objModelPaths = [
-            '3dmodels/poisson_pik_jaune.obj',
-            '3dmodels/raie_jaune.obj',
-            '3dmodels/reptile_fun.obj',
-            '3dmodels/rhino_legumes.obj',
-            '3dmodels/becane.obj',
-            '3dmodels/alien_blue.obj',
-            '3dmodels/figurine_velo.obj',
-            '3dmodels/batman_squat.obj',
-            '3dmodels/tete_coeur_blue.obj',
-            '3dmodels/assiette_de_gelee.obj',
-            '3dmodels/deco_moyen_age_2.obj',
-            '3dmodels/masque_sanglier_metal.obj',
-            '3dmodels/bonhomme_moyen_age.obj',
-            '3dmodels/16.obj',
-            '3dmodels/oeuf_pieds_soleil.obj',
-            '3dmodels/aristocrate_long_noze.obj',
-            '3dmodels/chaussures_moyen_ageuses_moche.obj',
-            '3dmodels/chaise.obj',
-            '3dmodels/bonhomme_chatte.obj'
-            // '3dmodels/votre_autre_modele.obj', // Ajoutez les vôtres ici
+             '3dmodels/poisson_pik_jaune.obj','3dmodels/raie_jaune.obj','3dmodels/reptile_fun.obj',
+             '3dmodels/rhino_legumes.obj','3dmodels/becane.obj','3dmodels/alien_blue.obj',
+             '3dmodels/figurine_velo.obj','3dmodels/batman_squat.obj','3dmodels/tete_coeur_blue.obj',
+             '3dmodels/assiette_de_gelee.obj','3dmodels/deco_moyen_age_2.obj',
+             '3dmodels/masque_sanglier_metal.obj','3dmodels/bonhomme_moyen_age.obj','3dmodels/16.obj',
+             '3dmodels/oeuf_pieds_soleil.obj','3dmodels/aristocrate_long_noze.obj',
+             '3dmodels/chaussures_moyen_ageuses_moche.obj','3dmodels/chaise.obj','3dmodels/bonhomme_chatte.obj'
         ];
 
+        // --- Helper Function: Create B&W Material ---
+        function createBWVersion(originalMaterial) {
+             if (!originalMaterial) { return new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1 }); }
+             let grayColor = defaultMaterialColor.clone();
+             if (originalMaterial.color) { const luminance = originalMaterial.color.r * 0.2126 + originalMaterial.color.g * 0.7152 + originalMaterial.color.b * 0.0722; grayColor.setRGB(luminance, luminance, luminance); }
+             const bwMaterial = new THREE.MeshStandardMaterial({ color: grayColor, map: null, roughness: originalMaterial.roughness !== undefined ? originalMaterial.roughness : 0.8, metalness: originalMaterial.metalness !== undefined ? originalMaterial.metalness : 0.1, side: originalMaterial.side !== undefined ? originalMaterial.side : THREE.FrontSide, });
+             return bwMaterial;
+        }
 
+        // --- init3DBackground ---
         function init3DBackground() {
-            console.log("Initialisation Three.js OBJ Loader v1.1...");
-            try {
-                const canvas = document.getElementById('bg-canvas');
-                scene = new THREE.Scene();
-                camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-                camera.position.z = 15;
+            console.log("Attempting init Three.js Smooth Drag v1.7.1 (Corrected)...");
+             try {
+                // Basic Setup, Lighting, Post-processing...
+                const canvas = document.getElementById('bg-canvas'); if (!canvas) { throw new Error("#bg-canvas not found!"); }
+                scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 15;
+                try { renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true }); } catch (e) { console.error("FAIL: Create WebGLRenderer", e); alert("WebGL Error."); return; }
+                renderer.setSize(window.innerWidth, window.innerHeight); renderer.setClearColor(0xffffff, 0); raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
+                const ambientLight = new THREE.AmbientLight(0xcccccc, 0.6); scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9); directionalLight.position.set(10, 15, 10); scene.add(directionalLight);
+                composer = new EffectComposer(renderer); const renderPass = new RenderPass(scene, camera); composer.addPass(renderPass); blurPass = new ShaderPass(BlurShader); blurPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(blurPass); ditherPass = new ShaderPass(DitherShaderColor); composer.addPass(ditherPass); selectionContrastPass = new ShaderPass(SelectionContrastShader); selectionContrastPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(selectionContrastPass);
+                console.log("INFO: Basic scene, renderer, composer setup OK.");
 
-                renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setClearColor(0xffffff, 0);
-
-                // --- Éclairage ---
-                const ambientLight = new THREE.AmbientLight(0xcccccc, 0.3);
-                scene.add(ambientLight);
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-                directionalLight.position.set(10, 15, 10);
-                scene.add(directionalLight);
-
-                // --- Post-processing Setup (Flou+++ -> Dither -> Contraste/Select+++) ---
-                composer = new EffectComposer(renderer);
-                const renderPass = new RenderPass(scene, camera);
-                composer.addPass(renderPass);
-
-                blurPass = new ShaderPass(BlurShader);
-                blurPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
-                blurPass.uniforms['blurRadius'].value = 3.0;
-                composer.addPass(blurPass);
-
-                ditherPass = new ShaderPass(DitherShaderBW);
-                const isInitiallyDark = document.body.classList.contains('dark-theme');
-                ditherPass.uniforms['u_isDarkMode'].value = isInitiallyDark ? 1.0 : 0.0;
-                composer.addPass(ditherPass);
-
-                selectionContrastPass = new ShaderPass(SelectionContrastShader);
-                selectionContrastPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
-                selectionContrastPass.uniforms['contrast'].value = 4.0;
-                selectionContrastPass.uniforms['u_isDarkMode'].value = isInitiallyDark ? 1.0 : 0.0;
-                composer.addPass(selectionContrastPass);
-                // --- Fin Post-processing Setup ---
-
-                // --- Chargement des Modèles OBJ ---
-                const loaderOBJ = new OBJLoader();
-                console.log(`Tentative de chargement de ${objModelPaths.length} modèles OBJ...`);
-
-                objModelPaths.forEach(path => {
-                    loaderOBJ.load(
-                        path,
-                        // Fonction onLoadCallback
-                        function (object) { // object est un THREE.Group
-                            console.log("Modèle OBJ chargé:", path);
-                            // Appliquer le matériau et configurer
+                // Loaders & Model Loading
+                const mtlLoader = new MTLLoader(); const objLoader = new OBJLoader();
+                console.log(`INFO: Loading ${objModelPaths.length} models...`);
+                objModelPaths.forEach(objPath => { const mtlPath = objPath.replace('.obj', '.mtl'); const modelName = objPath.split('/').pop(); mtlLoader.load(mtlPath, (materials) => { materials.preload(); console.log(`DEBUG: MTL loaded for ${modelName}`); objLoader.setMaterials(materials); loadObj(objPath, modelName, true); }, undefined, (error) => { console.warn(`WARN: MTL load failed for ${mtlPath}. (${modelName})`, error); objLoader.setMaterials(null); loadObj(objPath, modelName, false); }); });
+                function loadObj(objPath, modelName, mtlLoaded) {
+                    objLoader.load(objPath, (object) => {
+                        console.log(`DEBUG: OBJ loaded ${mtlLoaded ? 'AVEC' : 'SANS'} MTL: ${modelName}`);
+                        try {
                             object.traverse(function (child) {
-                                if (child.isMesh) {
-                                    child.material = modelBaseMaterial.clone(); // Appliquer matériau gris CLONE
-                                }
+                                if (child.isMesh) { if (!child.material) { child.material = new THREE.MeshStandardMaterial({ color: defaultMaterialColor }); console.warn(`WARN: Mesh in ${modelName} had no material, applied default.`); } const originalMat = Array.isArray(child.material) ? child.material[0] : child.material; if (originalMat) { child.userData.originalMaterial = originalMat.clone(); child.userData.bwMaterial = createBWVersion(originalMat); child.material = child.userData.bwMaterial; } else { console.warn(`WARN: Mesh in ${modelName} had invalid material.`); child.material = createBWVersion(null); child.userData.originalMaterial = child.material.clone(); child.userData.bwMaterial = child.material; } child.raycast = new THREE.Mesh().raycast; }
                             });
+                        } catch(e) { console.error(`ERROR: processing mesh materials for ${modelName}`, e); }
+                         const randomScaleFactor = Math.random() * 0.4 + 0.7; const baseScale = 5.0; const finalScale = baseScale * randomScaleFactor; object.scale.set(finalScale, finalScale, finalScale); object.position.x = (Math.random() - 0.5) * 40; object.position.y = (Math.random() - 0.5) * 30; object.position.z = (Math.random() - 0.5) * 30 - 15; object.rotation.x = Math.random() * Math.PI * 2; object.rotation.y = Math.random() * Math.PI * 2;
+                         object.userData.originalRotationSpeed = (Math.random() - 0.5) * 0.015; // Store original
+                         object.userData.rotationSpeed = object.userData.originalRotationSpeed; // Initialize current
+                         object.userData.targetRotationSpeed = object.userData.originalRotationSpeed; // Initialize target
+                         defaultModels.push(object); scene.add(object);
+                         console.log(`DEBUG: ${modelName} added. Initial speed: ${object.userData.rotationSpeed.toFixed(4)}`);
+                     }, undefined, (error) => { console.error(`ERROR: OBJ load failed for ${modelName}:`, error); /* Add visual error? */ });
+                 }
 
-                            // Échelle et Position aléatoires
-                            const randomScaleFactor = Math.random() * 0.4 + 0.7;
-                            const baseScale = 5.0; // Augmenter l'échelle de base si les OBJ sont petits
-                            const finalScale = baseScale * randomScaleFactor;
-                            object.scale.set(finalScale, finalScale, finalScale);
-
-                            object.position.x = (Math.random() - 0.5) * 40; // Augmenter la dispersion
-                            object.position.y = (Math.random() - 0.5) * 30;
-                            object.position.z = (Math.random() - 0.5) * 30 - 15;
-                            object.rotation.x = Math.random() * Math.PI * 2;
-                            object.rotation.y = Math.random() * Math.PI * 2;
-                            object.userData.rotationSpeed = (Math.random() - 0.5) * 0.015;
-
-                            defaultModels.push(object); // Ajouter pour l'animation
-                            scene.add(object);
-                            console.log(`Modèle ${path} ajouté à la scène.`);
-                        },
-                        // onProgress (optionnel)
-                        undefined,
-                        // onError
-                        function (error) {
-                            console.error(`Erreur chargement modèle OBJ ${path}:`, error);
-                            // Afficher un message d'erreur plus visible ?
-                            const errDiv = document.createElement('div');
-                            errDiv.textContent = `Erreur: Impossible de charger ${path}. Vérifiez le chemin et la console.`;
-                            errDiv.style.color = 'red';
-                            errDiv.style.position = 'fixed';
-                            errDiv.style.bottom = '30px';
-                            errDiv.style.left = '10px';
-                            errDiv.style.zIndex = '1001';
-                            document.body.appendChild(errDiv);
-                        }
-                    );
-                });
-                 // --- Fin Chargement Modèles ---
-
-                // --- Placeholder pour chargement GLTF ---
-                /* ... (gardé mais non prioritaire ici) ... */
-
+                // Event Listeners
                 window.addEventListener('resize', onWindowResize, false);
                 window.addEventListener('mousemove', onMouseMoveForBlob, false);
+                window.addEventListener('mousemove', onDocumentMouseMove, false); // Handles Hover AND Drag Move
+                window.addEventListener('mousedown', onDocumentMouseDown, false); // Handles Drag Start OR Selection Start
+                window.addEventListener('mouseup', onDocumentMouseUp, false); // Handles Drag End OR Selection End
+
                 animate();
-                console.log("Animation démarrée.");
+                console.log("INFO: Animation loop started.");
 
-            } catch (error) { console.error("Erreur init Three.js:", error); }
+             } catch (error) { console.error("FATAL: Error during init3DBackground:", error); }
         }
 
-        function onWindowResize() {
-             if (!camera || !renderer || !composer) return;
-             camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-             renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
-             composer.passes.forEach(pass => {
-                 if (pass.uniforms && pass.uniforms.resolution) {
-                     pass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
-                 }
-             });
-        }
-
-        // Listener SÉPARÉ juste pour le blob curseur
+        // --- Event Handlers ---
+        function onWindowResize() { /* ... (Identical) ... */ }
         const cursorBlob = document.getElementById('cursor-blob');
-        // const gaussianBlob = document.getElementById('gaussian-blob'); // Supprimé
-        function onMouseMoveForBlob(event) {
-             if (cursorBlob) {
-                 cursorBlob.style.left = `${event.clientX}px`;
-                 cursorBlob.style.top = `${event.clientY}px`;
-             }
-             // Pas de blob gaussien à gérer ici
-        }
+        function onMouseMoveForBlob(event) { /* ... (Identical) ... */ }
 
+        // Mousedown Handler (Combined Logic)
+        function onDocumentMouseDown(event) {
+            console.log("DEBUG: Mousedown event");
+            isDraggingObject = false; isDraggingSelection = false; draggedObject = null; // Reset flags
 
-        function animate() {
-            requestAnimationFrame(animate);
-            // Rotation modèles (maintenant OBJ)
-            defaultModels.forEach(model => {
-                 if(model && model.userData && typeof model.userData.rotationSpeed === 'number') {
-                    model.rotation.z += model.userData.rotationSpeed;
-                 }
-            });
-            if (composer) {
-                 composer.render();
-            } else if (renderer && scene && camera) {
-                 renderer.render(scene, camera);
+            if (event.target.closest('button, a, #nav-name, footer')) { console.log("DEBUG: Mousedown ignored (UI element clicked)."); return; }
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(defaultModels, true);
+
+            if (intersects.length > 0) { // --- CLICKED ON OBJECT: Start Object Drag ---
+                console.log("DEBUG: Mousedown hit object.");
+                isDraggingObject = true;
+                let clickedGroup = intersects[0].object; while (clickedGroup.parent && clickedGroup.parent !== scene) { clickedGroup = clickedGroup.parent; }
+
+                if (defaultModels.includes(clickedGroup)) {
+                    draggedObject = clickedGroup; console.log(`DEBUG: Dragging started on object: ${draggedObject.id}`);
+                    const intersectionPointWorld = intersects[0].point; const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
+                    dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), intersectionPointWorld);
+                    dragOffset.copy(intersectionPointWorld).sub(draggedObject.position);
+                    objectVelocity.set(0, 0, 0);
+                    if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; console.log("DEBUG: Set target rotation speed to 0."); }
+                    document.body.style.cursor = 'grabbing';
+                } else { console.warn("WARN: Clicked object's top group not found."); draggedObject = null; isDraggingObject = false; }
+
+            } else { // --- CLICKED ON BACKGROUND: Start Selection Drag ---
+                console.log("DEBUG: Mousedown hit background. Starting selection box drag.");
+                isDraggingSelection = true; startX = event.clientX; startY = event.clientY;
+                Object.assign(selectionBox.style, { left: `${startX}px`, top: `${startY}px`, width: '0px', height: '0px', display: 'block' });
+                document.body.style.userSelect = 'none';
             }
         }
 
-        // --- Logique UI (Theme Toggle, Selection Box) ---
+        // Mousemove Handler (Handles Hover, Object Drag Move, Selection Drag Move)
+        function onDocumentMouseMove(event) {
+             mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        // --- Theme Toggle Logic ---
-        const themeToggleButton = document.getElementById('theme-toggle-button');
-        themeToggleButton.addEventListener('click', () => {
-            document.body.classList.toggle('dark-theme');
-            const isDarkMode = document.body.classList.contains('dark-theme');
-            // Mettre à jour l'uniforme du shader Dither
-            if (ditherPass && ditherPass.uniforms.u_isDarkMode) {
-                ditherPass.uniforms.u_isDarkMode.value = isDarkMode ? 1.0 : 0.0;
-                // console.log("Dither dark mode uniform updated:", ditherPass.uniforms.u_isDarkMode.value);
-            }
-            // Mettre à jour aussi pour le shader de contraste/sélection
-             const selectionContrastPass = composer?.passes.find(pass => pass.uniforms.u_selectionBox);
-             if (selectionContrastPass && selectionContrastPass.uniforms.u_isDarkMode) {
-                 selectionContrastPass.uniforms.u_isDarkMode.value = isDarkMode ? 1.0 : 0.0;
-                 // console.log("Contrast/Select dark mode uniform updated:", selectionContrastPass.uniforms.u_isDarkMode.value);
+             if (isDraggingObject && draggedObject) { // --- Handle Object Drag Move ---
+                 raycaster.setFromCamera(mouse, camera);
+                 if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) { const newPosition = intersectionPoint.clone().sub(dragOffset); objectVelocity.copy(newPosition).sub(draggedObject.position); draggedObject.position.copy(newPosition); }
+                 return;
              }
-        });
 
-        // --- Selection Box Logic ---
-        const selectionBox = document.getElementById('selection-box');
-        let isDragging = false;
-        let startX = 0, startY = 0;
-        // let selectionContrastPass = null; // Déjà déclaré globalement
-
-        document.addEventListener('mousedown', (e) => {
-            if (!composer) return;
-             if (!selectionContrastPass) { // Initialiser si besoin
-                 selectionContrastPass = composer.passes.find(pass => pass.uniforms.u_selectionBox);
+             if (isDraggingSelection) { // --- Handle Selection Drag Move ---
+                 const currentX = event.clientX; const currentY = e.clientY; const rectLeft = Math.min(startX, currentX); const rectRight = Math.max(startX, currentX); const rectTop = Math.min(startY, currentY); const rectBottom = Math.max(startY, currentY); Object.assign(selectionBox.style, { left: `${rectLeft}px`, top: `${rectTop}px`, width: `${rectRight - rectLeft}px`, height: `${rectBottom - rectTop}px` }); const rendererSize = new THREE.Vector2(); renderer.getSize(rendererSize); const fragBottom = rendererSize.y - rectBottom; const fragTop = rendererSize.y - rectTop; if (rectRight > rectLeft && fragTop > fragBottom) { selectionContrastPass.uniforms.u_selectionBox.value.set(rectLeft, fragBottom, rectRight, fragTop); } else { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); } if (selectionContrastPass.uniforms.resolution) { selectionContrastPass.uniforms.resolution.value.set(rendererSize.x, rendererSize.y); }
+                 return;
              }
-            // Ne pas démarrer si on clique sur un bouton ou le nom
-            if (e.target.closest('button, a, #nav-name')) {
-                return;
-            }
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            selectionBox.style.left = `${startX}px`;
-            selectionBox.style.top = `${startY}px`;
-            selectionBox.style.width = '0px';
-            selectionBox.style.height = '0px';
-            selectionBox.style.display = 'block';
-            document.body.style.userSelect = 'none';
-        });
 
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging || !selectionContrastPass) return;
+             // --- Handle Hover (Only if NOT dragging object or selection) ---
+             raycaster.setFromCamera(mouse, camera);
+             const intersects = raycaster.intersectObjects(defaultModels, true); let intersectedGroup = null;
+             if (intersects.length > 0) { let currentObject = intersects[0].object; while (currentObject.parent && currentObject.parent !== scene) { currentObject = currentObject.parent; } if (defaultModels.includes(currentObject)) { intersectedGroup = currentObject; } }
 
-            const currentX = e.clientX;
-            const currentY = e.clientY;
-            const rectLeft = Math.min(startX, currentX);
-            const rectRight = Math.max(startX, currentX);
-            const rectTop = Math.min(startY, currentY);
-            const rectBottom = Math.max(startY, currentY);
+             if (intersectedGroup && intersectedGroup !== currentlyHoveredGroup) {
+                 if (currentlyHoveredGroup) { currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } }); }
+                 intersectedGroup.traverse(child => { if (child.isMesh && child.userData.originalMaterial) { child.material = child.userData.originalMaterial; } });
+                 currentlyHoveredGroup = intersectedGroup;
+             } else if (!intersectedGroup && currentlyHoveredGroup) {
+                 currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } });
+                 currentlyHoveredGroup = null;
+             }
+        }
 
-            selectionBox.style.left = `${rectLeft}px`;
-            selectionBox.style.top = `${rectTop}px`;
-            selectionBox.style.width = `${rectRight - rectLeft}px`;
-            selectionBox.style.height = `${rectBottom - rectTop}px`;
-
-            const rendererSize = new THREE.Vector2();
-            renderer.getSize(rendererSize);
-            const fragBottom = rendererSize.y - rectBottom;
-            const fragTop = rendererSize.y - rectTop;
-
-            selectionContrastPass.uniforms.u_selectionBox.value.set(rectLeft, fragBottom, rectRight, fragTop);
-            if (selectionContrastPass.uniforms.resolution) {
-                selectionContrastPass.uniforms.resolution.value.set(rendererSize.x, rendererSize.y);
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                selectionBox.style.display = 'none';
-                document.body.style.userSelect = '';
-                if (selectionContrastPass) {
-                    selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0);
+        // Mouseup Handler (Ends Object Drag OR Selection Drag)
+        function onDocumentMouseUp(event) {
+            console.log("DEBUG: Mouseup event");
+            if (isDraggingObject) { // --- OBJECT DRAG END ---
+                console.log("DEBUG: Object drag ended."); document.body.style.cursor = '';
+                if (draggedObject && draggedObject.userData) {
+                    draggedObject.userData.targetRotationSpeed = draggedObject.userData.originalRotationSpeed ?? 0; // Start restoring rotation
+                    console.log(`DEBUG: Set target rotation speed to original: ${draggedObject.userData.targetRotationSpeed.toFixed(4)}`);
                 }
+                if (draggedObject && objectVelocity.lengthSq() < velocityStopThreshold) { // Check momentum
+                    console.log("DEBUG: Drag velocity low, stopping momentum now."); draggedObject = null; // Clear immediately
+                } else if (draggedObject) { console.log("DEBUG: Drag velocity sufficient for momentum. Vel:", objectVelocity.length()); }
+                isDraggingObject = false; // Set flag AFTER checks
             }
-        });
-        // --- Fin Selection Box Logic ---
+
+            if (isDraggingSelection) { // --- SELECTION DRAG END ---
+                 console.log("DEBUG: Selection box drag ended.");
+                 isDraggingSelection = false; selectionBox.style.display = 'none'; document.body.style.userSelect = '';
+                 if (selectionContrastPass) { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); }
+            }
+        }
+
+        // --- animate ---
+        function animate() {
+             requestAnimationFrame(animate);
+             const delta = clock.getDelta();
+
+             // --- Momentum ---
+             if (!isDraggingObject && draggedObject) { // If not dragging, but object was just released
+                if (objectVelocity.lengthSq() > velocityStopThreshold) {
+                    draggedObject.position.addScaledVector(objectVelocity, 1.0);
+                    objectVelocity.multiplyScalar(dampingFactor);
+                } else {
+                    console.log("DEBUG: Momentum stopped."); objectVelocity.set(0, 0, 0);
+                    // Don't clear draggedObject here, let rotation damping finish if needed
+                    // draggedObject = null; // Moved this logic below
+                }
+             }
+
+             // --- Rotation Damping/Acceleration & Application ---
+             let isStillDampingRotation = false; // Flag to check if we need to keep draggedObject ref
+             defaultModels.forEach(model => {
+                  if(model.userData) {
+                      const currentSpeed = model.userData.rotationSpeed ?? 0;
+                      const targetSpeed = model.userData.targetRotationSpeed ?? 0;
+
+                      // Check if damping/acceleration is needed
+                      const needsLerp = Math.abs(targetSpeed - currentSpeed) > rotationStopThreshold;
+
+                      if (needsLerp) {
+                           model.userData.rotationSpeed += (targetSpeed - currentSpeed) * rotationDampingFactor;
+                            if (model === draggedObject) isStillDampingRotation = true; // Keep ref if lerping rotation
+                      } else if (currentSpeed !== targetSpeed) {
+                           // Snap to target if close enough
+                           model.userData.rotationSpeed = targetSpeed;
+                           // console.log(`DEBUG: Snapped rot speed for ${model.id} to ${targetSpeed.toFixed(4)}`);
+                      }
+
+                      // Apply the current rotation speed (if not zero)
+                      if (model.userData.rotationSpeed !== 0) {
+                          model.rotation.z += model.userData.rotationSpeed * delta * 100; // Adjust multiplier for feel
+                      }
+                  }
+             });
+
+            // --- Clear draggedObject ONLY if momentum AND rotation damping finished ---
+            if (!isDraggingObject && draggedObject && objectVelocity.lengthSq() <= velocityStopThreshold && !isStillDampingRotation) {
+                 console.log("DEBUG: Clearing draggedObject reference (momentum & rotation lerp finished).");
+                 draggedObject = null;
+            }
+
+
+             // --- Rendering ---
+             if (composer) { try { composer.render(); } catch(e) { console.error("ERROR: Composer render failed:", e); }
+             } else if (renderer && scene && camera) { try { renderer.render(scene, camera); } catch(e) { console.error("ERROR: Basic render failed:", e); } }
+        }
+
+        // --- UI Logic (Theme Toggle Only) ---
+        const themeToggleButton = document.getElementById('theme-toggle-button');
+        themeToggleButton.addEventListener('click', () => { document.body.classList.toggle('dark-theme'); });
 
         // Init 3D background
         init3DBackground();
