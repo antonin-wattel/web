@@ -31,15 +31,12 @@
         }
         body.dark-theme ::selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
         body.dark-theme ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-smooth: never; -webkit-font-smoothing: none; cursor: var(--custom-cursor); transition: background-color 0.3s, color 0.3s;
-            /* Prevent pull-to-refresh/overscroll effects interfering with touch */
-            overscroll-behavior: none;
-        }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-smooth: never; -webkit-font-smoothing: none; cursor: var(--custom-cursor); transition: background-color 0.3s, color 0.3s; overscroll-behavior: none; }
         ::selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
         ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
-        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0.9; touch-action: none; /* Prevent default touch actions like panning/zooming on the canvas */ }
-        #main-view-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; visibility: visible; opacity: 1; pointer-events: none; /* Allow clicks/touches to pass through to canvas unless hitting specific UI */ }
-        #main-view-container > * { pointer-events: auto; /* Re-enable pointer events for UI children */ }
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0.9; touch-action: none; }
+        #main-view-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; visibility: visible; opacity: 1; pointer-events: none; }
+        #main-view-container > * { pointer-events: auto; }
         #construction-message { position: absolute; top: 75px; left: 15px; transform: none; font-size: 11px; font-family: Arial, Helvetica, sans-serif; font-weight: normal; color: var(--text-color); text-shadow: none; z-index: 15; text-align: left; text-transform: uppercase; letter-spacing: 0.1em; transition: color 0.3s; }
         .nav-item { position: absolute; font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: bold; cursor: pointer; padding: 5px 7px; z-index: 15; background-color: transparent; color: var(--text-color); transition: color 0.1s linear; border: none; text-decoration: none; white-space: nowrap; overflow: visible; cursor: inherit !important; }
         #nav-name { font-family: 'Times New Roman', Times, serif; font-style: italic; font-size: 22px; padding: 5px 8px; border: none; position: absolute; top: 15px; left: 15px; z-index: 16; transform: skewX(-5deg); text-shadow: none; background-color: transparent; color: var(--text-color); cursor: default; }
@@ -56,15 +53,9 @@
         body.dark-theme #theme-toggle-button .sun-icon { display: none; }
         #selection-box { position: fixed; border: 1px dashed var(--selection-border); background-color: var(--selection-bg); pointer-events: none; display: none; z-index: 200; transition: border-color 0.3s, background-color 0.3s; }
         body.dark-theme #selection-box { border-color: var(--accent-color); background-color: rgba(255, 255, 0, 0.1); }
-        #cursor-blob { position: fixed; width: 8px; height: 8px; background-color: var(--cursor-blob-color); border-radius: 50%; filter: blur(1px); pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background-color 0.3s; display: block; /* Ensure visible */ }
-        /* Hide blob on touch devices where it's less useful */
-        @media (hover: none) and (pointer: coarse) {
-            #cursor-blob { display: none; }
-            html, body { cursor: auto; } /* Use default system cursor on touch devices */
-            body.dark-theme { cursor: auto; }
-        }
+        #cursor-blob { position: fixed; width: 8px; height: 8px; background-color: var(--cursor-blob-color); border-radius: 50%; filter: blur(1px); pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background-color 0.3s; display: block; }
+        @media (hover: none) and (pointer: coarse) { #cursor-blob { display: none; } html, body { cursor: auto; } body.dark-theme { cursor: auto; } }
         #gaussian-blob { display: none; }
-
     </style>
 </head>
 <body>
@@ -99,7 +90,7 @@
         const clock = new THREE.Clock();
         let selectionContrastPass, ditherPass, blurPass;
         let raycaster;
-        let mouse; // Stores normalized device coordinates for raycasting
+        let mouse;
         let currentlyHoveredGroup = null;
         const defaultMaterialColor = new THREE.Color(0x888888);
         let loadedModelCount = 0;
@@ -110,9 +101,12 @@
         let minCameraY = 0;
         let maxCameraY = 0;
         const cameraLerpFactor = 0.08;
+        const cameraPanSensitivity = 0.05; // Sensitivity for touch panning
 
         // --- Interaction State ---
         let isDraggingObject = false; let draggedObject = null;
+        let isPanningCamera = false; // Flag for touch camera panning
+        let lastPanY = null;       // Store last Y for touch panning delta
         const dragPlane = new THREE.Plane(); const intersectionPoint = new THREE.Vector3();
         const dragOffset = new THREE.Vector3(); const objectVelocity = new THREE.Vector3();
         const dampingFactor = 0.92;
@@ -123,7 +117,7 @@
         const zoomSensitivityFactor = -0.03;
         const zoomDampingFactor = 0.90;
         const zoomStopThreshold = 0.001;
-        let isDraggingSelection = false; let startX = 0, startY = 0; // Selection primarily for mouse
+        let isDraggingSelection = false; let startX = 0, startY = 0;
         const selectionBox = document.getElementById('selection-box');
 
         // --- Shaders (Complete Definitions) ---
@@ -143,7 +137,7 @@
             const numModels = defaultModels.length;
             if (numModels === 0 || !camera) { console.warn("Cannot arrange grid: No models or camera."); return; }
 
-            // --- Adaptive Columns Calculation (2 for mobile) ---
+            // --- Adaptive Columns Calculation (2 for mobile/tablet) ---
             let gridCols;
             const screenWidth = window.innerWidth;
             if (screenWidth < 768) { // Mobile/small tablet breakpoint
@@ -160,16 +154,16 @@
             const gridWidth = visibleWidth * 0.70; // Use 70% of width
             const spacingX = gridCols > 1 ? gridWidth / (gridCols - 1) : 0; const spacingY = 8;
 
-            // --- Position Calculation (Lowered Top Margin, Center X for 1/2 cols) ---
-            const offsetX = gridCols > 1 ? -gridWidth / 2 : 0; // Center X if 1 col
-            const initialOffsetY = (visibleHeight / 2) * 0.5; // <-- ADJUSTED TOP MARGIN (lower start pos)
+            // --- Position Calculation (Lowered Top Margin, Center X for cols) ---
+            const offsetX = gridCols > 1 ? -gridWidth / 2 : 0; // Center X if 1 col (remains correct for 2+)
+            const initialOffsetY = (visibleHeight / 2) * 0.5; // <-- ADJUSTED TOP MARGIN (Lowered start pos)
             const gridZ = 0;
 
             // --- Position Each Model & Set Initial Speed ---
             defaultModels.forEach((model, index) => {
                 const col = index % gridCols; const row = Math.floor(index / gridCols);
                 const x = offsetX + col * spacingX; const y = initialOffsetY - row * spacingY; const z = gridZ + (Math.random() - 0.5) * 2;
-                model.position.set(x, y, z); // Set position
+                model.position.set(x, y, z);
                 // Set Initial Rotation Speed
                 if (model.userData) { const initialSpeed = model.userData.originalRotationSpeed ?? (Math.random() - 0.5) * 0.01; model.userData.rotationSpeed = initialSpeed; model.userData.targetRotationSpeed = initialSpeed; }
                 else { const initialSpeed = (Math.random() - 0.5) * 0.01; model.userData = { rotationSpeed: initialSpeed, targetRotationSpeed: initialSpeed, originalRotationSpeed: initialSpeed }; }
@@ -178,14 +172,13 @@
             // --- Calculate Scroll Limits ---
             const totalGridHeight = gridRows > 1 ? (gridRows - 1) * spacingY : 0; const contentHeight = totalGridHeight + visibleHeight * 0.2;
             maxCameraY = 0; if (contentHeight > visibleHeight) { minCameraY = -(contentHeight - visibleHeight); } else { minCameraY = 0; }
-            camera.position.y = 0; cameraTargetY = 0; // Reset camera position Y
+            camera.position.y = 0; cameraTargetY = 0;
             console.log(`Grid arranged: ${gridCols}x${gridRows}. Scroll range [${minCameraY.toFixed(2)}, ${maxCameraY.toFixed(2)}]`);
         }
 
-
         // --- init3DBackground (Touch Listeners Added) ---
         function init3DBackground() {
-            console.log("Attempting init Three.js Scrolling Grid v1.3.0 (Touch Drag)...");
+            console.log("Attempting init Three.js Scrolling Grid v1.4.0 (Touch Scroll)...");
              try {
                  // Basic Setup
                  const canvas = document.getElementById('bg-canvas'); if (!canvas) { throw new Error("#bg-canvas not found!"); } scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 15; camera.position.y = 0; try { renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true }); } catch (e) { console.error("FAIL: Create WebGLRenderer", e); alert("WebGL Error."); return; } renderer.setSize(window.innerWidth, window.innerHeight); renderer.setClearColor(0x000000, 0); raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2(); const ambientLight = new THREE.AmbientLight(0xcccccc, 0.6); scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9); directionalLight.position.set(10, 15, 10); scene.add(directionalLight); composer = new EffectComposer(renderer); const renderPass = new RenderPass(scene, camera); composer.addPass(renderPass); blurPass = new ShaderPass(BlurShader); blurPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(blurPass); ditherPass = new ShaderPass(DitherShaderColor); composer.addPass(ditherPass); selectionContrastPass = new ShaderPass(SelectionContrastShader); selectionContrastPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(selectionContrastPass); console.log("INFO: Basic scene, renderer, composer setup OK.");
@@ -193,35 +186,33 @@
                  // Loaders & Model Loading
                  const mtlLoader = new MTLLoader(); const objLoader = new OBJLoader(); const totalModelsToLoad = objModelPaths.length; loadedModelCount = 0; allModelsLoaded = false; console.log(`INFO: Loading ${totalModelsToLoad} models...`);
                  objModelPaths.forEach(objPath => { const mtlPath = objPath.replace('.obj', '.mtl'); const modelName = objPath.split('/').pop(); mtlLoader.load(mtlPath, (materials) => { materials.preload(); objLoader.setMaterials(materials); loadObj(objPath, modelName, true); }, undefined, (error) => { console.warn(`MTL Error ${modelName}:`, error); objLoader.setMaterials(null); loadObj(objPath, modelName, false); }); });
-                 function loadObj(objPath, modelName, mtlLoaded) { /* ... same as previous ... */
+                 function loadObj(objPath, modelName, mtlLoaded) { /* ... load logic same as previous ... */
                      objLoader.load(objPath, (object) => { // Success
-                         console.log(`DEBUG: OBJ loaded ${mtlLoaded ? 'WITH' : 'WITHOUT'} MTL: ${modelName}`);
                          try {
                              object.traverse(function (child) { // Material Setup
                                 if (child.isMesh) { let originalMat = null; if (!child.userData) child.userData = {}; if (!child.material) { child.material = new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); originalMat = child.material; } else { originalMat = Array.isArray(child.material) ? child.material[0] : child.material; if (originalMat) { if (originalMat.hasOwnProperty('flatShading')) { originalMat.flatShading = false; } } else { originalMat = new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); child.material = originalMat; } } child.userData.originalMaterial = originalMat.clone(); child.userData.bwMaterial = createBWVersion(originalMat); child.material = child.userData.bwMaterial; child.raycast = new THREE.Mesh().raycast; }});
                              const randomScaleFactor = Math.random() * 0.3 + 0.6; const baseScale = 6.5; const finalScale = baseScale * randomScaleFactor; object.scale.set(finalScale, finalScale, finalScale); // Scale
                              object.rotation.x = Math.random() * Math.PI * 2; object.rotation.y = Math.random() * Math.PI * 2; object.rotation.z = Math.random() * Math.PI * 2; // Initial Random Rotation
                              if (!object.userData) object.userData = {}; object.userData.originalRotationSpeed = (Math.random() - 0.5) * 0.015; // Store Original Speed
-                             defaultModels.push(object); scene.add(object); loadedModelCount++; console.log(`DEBUG: ${modelName} processed (${loadedModelCount}/${totalModelsToLoad}).`); // Add & Count
+                             defaultModels.push(object); scene.add(object); loadedModelCount++; // Add & Count
+                             // console.log(`DEBUG: ${modelName} processed (${loadedModelCount}/${totalModelsToLoad}).`); // Less verbose log
                              if (!allModelsLoaded && loadedModelCount === totalModelsToLoad) { allModelsLoaded = true; arrangeModelsInGrid(); }
                          } catch(e) { console.error(`ERROR processing ${modelName}:`, e); loadedModelCount++; if (!allModelsLoaded && loadedModelCount === totalModelsToLoad) { allModelsLoaded = true; arrangeModelsInGrid(); } }
                      }, undefined, (error) => { console.error(`ERROR loading ${modelName}:`, error); loadedModelCount++; if (!allModelsLoaded && loadedModelCount === totalModelsToLoad) { allModelsLoaded = true; arrangeModelsInGrid(); } });
                  }
 
                  // --- Event Listeners (Mouse + Touch Added) ---
-                 // Mouse Listeners
                  window.addEventListener('resize', onWindowResize, false);
-                 window.addEventListener('mousemove', onMouseMoveForBlob, false); // Cursor blob only
-                 window.addEventListener('mousemove', onDocumentMouseMove, false); // Hover, Drag Move, Selection Move
-                 window.addEventListener('mousedown', onDocumentMouseDown, false); // Drag Start, Selection Start
-                 window.addEventListener('mouseup', onDocumentMouseUp, false);     // Drag End, Selection End
-                 window.addEventListener('wheel', onDocumentMouseWheel, { passive: false }); // Zoom / Camera Scroll
-
-                 // Touch Listeners (for basic object drag)
+                 // Mouse
+                 window.addEventListener('mousemove', onMouseMoveForBlob, false);
+                 window.addEventListener('mousemove', onDocumentMouseMove, false);
+                 window.addEventListener('mousedown', onDocumentMouseDown, false);
+                 window.addEventListener('mouseup', onDocumentMouseUp, false);
+                 window.addEventListener('wheel', onDocumentMouseWheel, { passive: false });
+                 // Touch
                  window.addEventListener('touchstart', onTouchStart, { passive: false });
                  window.addEventListener('touchmove', onTouchMove, { passive: false });
                  window.addEventListener('touchend', onTouchEnd, false);
-
 
                  animate();
                  console.log("INFO: Animation loop started.");
@@ -229,206 +220,129 @@
         }
 
         // --- Event Handlers ---
-        function onWindowResize() { /* ... same ... */
-             if (!camera || !renderer || !composer) return; camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); composer.passes.forEach(pass => { if (pass.uniforms && pass.uniforms.resolution) { pass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight); } }); if (allModelsLoaded) { arrangeModelsInGrid(); }
-        }
+        function onWindowResize() { if (!camera || !renderer || !composer) return; camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); composer.passes.forEach(pass => { if (pass.uniforms && pass.uniforms.resolution) { pass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight); } }); if (allModelsLoaded) { arrangeModelsInGrid(); } }
         const cursorBlob = document.getElementById('cursor-blob');
-        function onMouseMoveForBlob(event) { /* ... same ... */
-             if (cursorBlob) { cursorBlob.style.left = `${event.clientX}px`; cursorBlob.style.top = `${event.clientY}px`; }
-        }
+        function onMouseMoveForBlob(event) { if (cursorBlob) { cursorBlob.style.left = `${event.clientX}px`; cursorBlob.style.top = `${event.clientY}px`; } }
 
-        // --- Mouse Handlers (Mostly Unchanged) ---
-        function onDocumentMouseDown(event) {
-             isDraggingObject = false; isDraggingSelection = false; draggedObject = null; if (event.target.closest('button, a, #nav-name, footer')) { return; } mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; raycaster.setFromCamera(mouse, camera); const intersects = raycaster.intersectObjects(defaultModels, true); if (intersects.length > 0) { isDraggingObject = true; let clickedGroup = intersects[0].object; while (clickedGroup.parent && clickedGroup.parent !== scene) { clickedGroup = clickedGroup.parent; } if (defaultModels.includes(clickedGroup)) { draggedObject = clickedGroup; const intersectionPointWorld = intersects[0].point; const cameraDirection = camera.getWorldDirection(new THREE.Vector3()); dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), intersectionPointWorld); dragOffset.copy(intersectionPointWorld).sub(draggedObject.position); objectVelocity.set(0, 0, 0); zoomVelocity = 0; if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; } document.body.style.cursor = 'grabbing'; } else { console.warn("WARN: Clicked group not found."); draggedObject = null; isDraggingObject = false; } } else { isDraggingSelection = true; startX = event.clientX; startY = event.clientY; Object.assign(selectionBox.style, { left: `${startX}px`, top: `${startY}px`, width: '0px', height: '0px', display: 'block' }); document.body.style.userSelect = 'none'; }
-        }
-        function onDocumentMouseMove(event) {
-             mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; if (isDraggingObject && draggedObject) { raycaster.setFromCamera(mouse, camera); if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) { const newPosition = intersectionPoint.clone().sub(dragOffset); objectVelocity.copy(newPosition).sub(draggedObject.position); draggedObject.position.copy(newPosition); } return; } if (isDraggingSelection) { const currentX = event.clientX; const currentY = event.clientY; const rectLeft = Math.min(startX, currentX); const rectRight = Math.max(startX, currentX); const rectTop = Math.min(startY, currentY); const rectBottom = Math.max(startY, currentY); Object.assign(selectionBox.style, { left: `${rectLeft}px`, top: `${rectTop}px`, width: `${rectRight - rectLeft}px`, height: `${rectBottom - rectTop}px` }); const rendererSize = new THREE.Vector2(); renderer.getSize(rendererSize); const fragBottom = rendererSize.y - rectBottom; const fragTop = rendererSize.y - rectTop; if (rectRight > rectLeft && fragTop > fragBottom) { selectionContrastPass.uniforms.u_selectionBox.value.set(rectLeft, fragBottom, rectRight, fragTop); } else { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); } if (selectionContrastPass.uniforms.resolution) { selectionContrastPass.uniforms.resolution.value.set(rendererSize.x, rendererSize.y); } return; } raycaster.setFromCamera(mouse, camera); const intersects = raycaster.intersectObjects(defaultModels, true); let intersectedGroup = null; if (intersects.length > 0) { let currentObject = intersects[0].object; while (currentObject.parent && currentObject.parent !== scene) { currentObject = currentObject.parent; } if (defaultModels.includes(currentObject)) { intersectedGroup = currentObject; } } if (intersectedGroup && intersectedGroup !== currentlyHoveredGroup) { if (currentlyHoveredGroup) { currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } }); } intersectedGroup.traverse(child => { if (child.isMesh && child.userData.originalMaterial) { const originalMat = child.userData.originalMaterial; const saturatedMaterial = originalMat.clone(); saturatedMaterial.flatShading = false; if (saturatedMaterial.color) { saturatedMaterial.color.offsetHSL(0, 0.3, 0); } child.material = saturatedMaterial; } }); currentlyHoveredGroup = intersectedGroup; document.body.style.cursor = 'pointer'; } else if (!intersectedGroup && currentlyHoveredGroup) { currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } }); currentlyHoveredGroup = null; document.body.style.cursor = ''; }
-        }
-        function onDocumentMouseUp(event) {
-             if (isDraggingObject) { document.body.style.cursor = ''; if (draggedObject && draggedObject.userData) { const originalSpeed = draggedObject.userData.originalRotationSpeed ?? 0; draggedObject.userData.targetRotationSpeed = originalSpeed; } isDraggingObject = false; } if (isDraggingSelection) { isDraggingSelection = false; selectionBox.style.display = 'none'; document.body.style.userSelect = ''; if (selectionContrastPass) { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); } }
-        }
-        function onDocumentMouseWheel(event) { // Updated structure
-            if (isDraggingSelection) { return; } // Ignore if dragging selection
-            if (draggedObject) { // Handle OBJECT ZOOM if selected/coasting
-                event.preventDefault(); zoomVelocity += event.deltaY * zoomSensitivityFactor;
-                if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; }
-                return; // Don't do camera scroll
-            }
-            if (minCameraY !== maxCameraY) { // Handle CAMERA SCROLL if enabled
-                event.preventDefault(); cameraTargetY -= event.deltaY * 0.02;
-                cameraTargetY = Math.max(minCameraY, Math.min(maxCameraY, cameraTargetY));
-            }
-        }
+        // --- Mouse Handlers ---
+        function onDocumentMouseDown(event) { isDraggingObject = false; isDraggingSelection = false; draggedObject = null; if (event.target.closest('button, a, #nav-name, footer')) { return; } mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; raycaster.setFromCamera(mouse, camera); const intersects = raycaster.intersectObjects(defaultModels, true); if (intersects.length > 0) { isDraggingObject = true; let clickedGroup = intersects[0].object; while (clickedGroup.parent && clickedGroup.parent !== scene) { clickedGroup = clickedGroup.parent; } if (defaultModels.includes(clickedGroup)) { draggedObject = clickedGroup; const intersectionPointWorld = intersects[0].point; const cameraDirection = camera.getWorldDirection(new THREE.Vector3()); dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), intersectionPointWorld); dragOffset.copy(intersectionPointWorld).sub(draggedObject.position); objectVelocity.set(0, 0, 0); zoomVelocity = 0; if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; } document.body.style.cursor = 'grabbing'; } else { console.warn("WARN: Clicked group not found."); draggedObject = null; isDraggingObject = false; } } else { isDraggingSelection = true; startX = event.clientX; startY = event.clientY; Object.assign(selectionBox.style, { left: `${startX}px`, top: `${startY}px`, width: '0px', height: '0px', display: 'block' }); document.body.style.userSelect = 'none'; } }
+        function onDocumentMouseMove(event) { mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; if (isDraggingObject && draggedObject) { raycaster.setFromCamera(mouse, camera); if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) { const newPosition = intersectionPoint.clone().sub(dragOffset); objectVelocity.copy(newPosition).sub(draggedObject.position); draggedObject.position.copy(newPosition); } return; } if (isDraggingSelection) { const currentX = event.clientX; const currentY = event.clientY; const rectLeft = Math.min(startX, currentX); const rectRight = Math.max(startX, currentX); const rectTop = Math.min(startY, currentY); const rectBottom = Math.max(startY, currentY); Object.assign(selectionBox.style, { left: `${rectLeft}px`, top: `${rectTop}px`, width: `${rectRight - rectLeft}px`, height: `${rectBottom - rectTop}px` }); const rendererSize = new THREE.Vector2(); renderer.getSize(rendererSize); const fragBottom = rendererSize.y - rectBottom; const fragTop = rendererSize.y - rectTop; if (rectRight > rectLeft && fragTop > fragBottom) { selectionContrastPass.uniforms.u_selectionBox.value.set(rectLeft, fragBottom, rectRight, fragTop); } else { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); } if (selectionContrastPass.uniforms.resolution) { selectionContrastPass.uniforms.resolution.value.set(rendererSize.x, rendererSize.y); } return; } raycaster.setFromCamera(mouse, camera); const intersects = raycaster.intersectObjects(defaultModels, true); let intersectedGroup = null; if (intersects.length > 0) { let currentObject = intersects[0].object; while (currentObject.parent && currentObject.parent !== scene) { currentObject = currentObject.parent; } if (defaultModels.includes(currentObject)) { intersectedGroup = currentObject; } } if (intersectedGroup && intersectedGroup !== currentlyHoveredGroup) { if (currentlyHoveredGroup) { currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } }); } intersectedGroup.traverse(child => { if (child.isMesh && child.userData.originalMaterial) { const originalMat = child.userData.originalMaterial; const saturatedMaterial = originalMat.clone(); saturatedMaterial.flatShading = false; if (saturatedMaterial.color) { saturatedMaterial.color.offsetHSL(0, 0.3, 0); } child.material = saturatedMaterial; } }); currentlyHoveredGroup = intersectedGroup; document.body.style.cursor = 'pointer'; } else if (!intersectedGroup && currentlyHoveredGroup) { currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } }); currentlyHoveredGroup = null; document.body.style.cursor = ''; } }
+        function onDocumentMouseUp(event) { if (isDraggingObject) { document.body.style.cursor = ''; if (draggedObject && draggedObject.userData) { const originalSpeed = draggedObject.userData.originalRotationSpeed ?? 0; draggedObject.userData.targetRotationSpeed = originalSpeed; } isDraggingObject = false; } if (isDraggingSelection) { isDraggingSelection = false; selectionBox.style.display = 'none'; document.body.style.userSelect = ''; if (selectionContrastPass) { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); } } }
+        function onDocumentMouseWheel(event) { if (isDraggingSelection) { return; } if (draggedObject) { event.preventDefault(); zoomVelocity += event.deltaY * zoomSensitivityFactor; if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; } return; } if (minCameraY !== maxCameraY) { event.preventDefault(); cameraTargetY -= event.deltaY * 0.02; cameraTargetY = Math.max(minCameraY, Math.min(maxCameraY, cameraTargetY)); } }
 
         // --- Touch Handlers ---
         function onTouchStart(event) {
-            // Ignore multi-touch gestures for now
-            if (event.touches.length !== 1) {
-                // If a drag was in progress, end it prematurely on multi-touch
-                if (isDraggingObject) {
-                    isDraggingObject = false;
-                    if (draggedObject && draggedObject.userData) {
-                        draggedObject.userData.targetRotationSpeed = draggedObject.userData.originalRotationSpeed ?? 0;
-                    }
-                     // draggedObject = null; // Let animate clear it
+            if (event.touches.length !== 1) { // Ignore multi-touch start
+                if (isDraggingObject) { // Cancel drag if multi-touch starts during drag
+                    isDraggingObject = false; if (draggedObject?.userData) { draggedObject.userData.targetRotationSpeed = draggedObject.userData.originalRotationSpeed ?? 0; }
                 }
+                isPanningCamera = false; // Ensure panning is off
                 return;
             }
 
             const touch = event.touches[0];
-            const touchX = touch.clientX;
-            const touchY = touch.clientY;
+            const touchX = touch.clientX; const touchY = touch.clientY;
 
-            // Check if touch hits a UI element (button, link, etc.)
+            // Check for UI element touch
             const touchedElement = document.elementFromPoint(touchX, touchY);
-            if (touchedElement && touchedElement.closest('button, a, footer, #nav-name')) {
-                // console.log("Touch on UI element ignored."); // DEBUG
-                return; // Allow default touch behavior for UI
+            if (touchedElement && touchedElement.closest('button, a, footer, #nav-name')) { return; }
+
+            // Prevent default actions like long-press menus IF touch starts on canvas
+            if (touchedElement === renderer.domElement) {
+                 event.preventDefault();
             }
 
-            // --- Touch on Canvas/Background ---
-            isDraggingObject = false;
-            isDraggingSelection = false; // Disable selection box via touch for now
-            draggedObject = null;
 
-            // Update mouse vector for raycasting based on touch
-            mouse.x = (touchX / window.innerWidth) * 2 - 1;
-            mouse.y = -(touchY / window.innerHeight) * 2 + 1;
+            // Reset states
+            isDraggingObject = false; isPanningCamera = false; draggedObject = null; isDraggingSelection = false;
 
+            // Raycast from touch point
+            mouse.x = (touchX / window.innerWidth) * 2 - 1; mouse.y = -(touchY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(defaultModels, true);
 
-            if (intersects.length > 0) {
-                // Find the top-level group
-                let clickedGroup = intersects[0].object;
-                while (clickedGroup.parent && clickedGroup.parent !== scene) {
-                    clickedGroup = clickedGroup.parent;
-                }
-
+            if (intersects.length > 0) { // --- Touch started on an OBJECT ---
+                let clickedGroup = intersects[0].object; while (clickedGroup.parent && clickedGroup.parent !== scene) { clickedGroup = clickedGroup.parent; }
                 if (defaultModels.includes(clickedGroup)) {
-                    isDraggingObject = true;
-                    draggedObject = clickedGroup;
-                    // console.log(`Touch Drag Start: ${draggedObject.id}`); // DEBUG
-
-                    const intersectionPointWorld = intersects[0].point;
-                    const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
-                    dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), intersectionPointWorld);
-                    dragOffset.copy(intersectionPointWorld).sub(draggedObject.position);
-
-                    // Reset motion state
-                    objectVelocity.set(0, 0, 0);
-                    zoomVelocity = 0; // Reset zoom on new touch drag
-                    if (draggedObject.userData) {
-                        draggedObject.userData.targetRotationSpeed = 0; // Stop rotation
-                    }
-                     // No preventDefault here, allow potential "tap" behavior if needed later
-                } else {
-                     console.warn("Touch hit object, but group not found.");
-                }
-            } else {
-                // Touched background - could potentially initiate camera pan later
-                // console.log("Touch on background"); // DEBUG
+                    isDraggingObject = true; draggedObject = clickedGroup; isPanningCamera = false;
+                    const intersectionPointWorld = intersects[0].point; const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
+                    dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), intersectionPointWorld); dragOffset.copy(intersectionPointWorld).sub(draggedObject.position);
+                    objectVelocity.set(0, 0, 0); zoomVelocity = 0;
+                    if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; }
+                } else { console.warn("Touch hit object, but group not found."); }
+            } else { // --- Touch started on BACKGROUND ---
+                isPanningCamera = true; isDraggingObject = false; draggedObject = null;
+                lastPanY = touchY; // Record initial Y for panning delta
             }
         }
 
         function onTouchMove(event) {
-            if (!isDraggingObject || !draggedObject) {
-                // If not dragging an object, don't prevent scroll, allow native touch scrolling/panning for the page (if body wasn't overflow:hidden)
-                // If we implement touch-based camera panning later, this would change.
-                return;
+             // Handle Camera Panning first if active
+            if (isPanningCamera) {
+                event.preventDefault(); // Prevent page scroll during camera pan
+
+                if (event.touches.length === 1) {
+                    const currentY = event.touches[0].clientY;
+                    const deltaY = currentY - (lastPanY ?? currentY); // Use currentY if lastPanY is null
+
+                    if (minCameraY !== maxCameraY) { // Only pan if scroll is enabled
+                         cameraTargetY += deltaY * cameraPanSensitivity; // Apply delta with sensitivity
+                         cameraTargetY = Math.max(minCameraY, Math.min(maxCameraY, cameraTargetY)); // Clamp
+                    }
+                    lastPanY = currentY; // Update last Y
+                }
+                 // console.log("Touch Pan Move, targetY:", cameraTargetY.toFixed(2)); // DEBUG
+                return; // Don't process object drag if panning camera
             }
 
-             // We are dragging an object, prevent browser scrolling/zooming
-             event.preventDefault();
+            // Handle Object Dragging if active
+            if (isDraggingObject && draggedObject) {
+                event.preventDefault(); // Prevent page scroll/zoom during object drag
 
-            if (event.touches.length === 1) {
-                const touch = event.touches[0];
-                const touchX = touch.clientX;
-                const touchY = touch.clientY;
-
-                // Update mouse vector for raycasting
-                mouse.x = (touchX / window.innerWidth) * 2 - 1;
-                mouse.y = -(touchY / window.innerHeight) * 2 + 1;
-
-                raycaster.setFromCamera(mouse, camera);
-
-                // Calculate new position based on intersection with drag plane
-                if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) {
-                    const newPosition = intersectionPoint.clone().sub(dragOffset);
-                    // Update velocity for momentum calculation in animate()
-                    objectVelocity.copy(newPosition).sub(draggedObject.position);
-                    // Directly update position
-                    draggedObject.position.copy(newPosition);
+                if (event.touches.length === 1) {
+                    const touch = event.touches[0]; const touchX = touch.clientX; const touchY = touch.clientY;
+                    mouse.x = (touchX / window.innerWidth) * 2 - 1; mouse.y = -(touchY / window.innerHeight) * 2 + 1;
+                    raycaster.setFromCamera(mouse, camera);
+                    if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) {
+                        const newPosition = intersectionPoint.clone().sub(dragOffset);
+                        objectVelocity.copy(newPosition).sub(draggedObject.position);
+                        draggedObject.position.copy(newPosition);
+                    }
+                } else { // Multi-touch during drag - cancel
+                     if (isDraggingObject) { isDraggingObject = false; if (draggedObject?.userData) { draggedObject.userData.targetRotationSpeed = draggedObject.userData.originalRotationSpeed ?? 0; } }
                 }
-            } else {
-                 // Multi-touch during drag - cancel the drag?
-                 if (isDraggingObject) {
-                     // console.log("Multi-touch during drag - cancelling."); // DEBUG
-                     isDraggingObject = false;
-                     if (draggedObject && draggedObject.userData) {
-                         draggedObject.userData.targetRotationSpeed = draggedObject.userData.originalRotationSpeed ?? 0;
-                     }
-                     // Let animate clear draggedObject ref based on momentum stopping
-                 }
+                return; // Don't process anything else if dragging object
             }
         }
 
         function onTouchEnd(event) {
-            // Use changedTouches as event.touches will be empty
-             if (event.changedTouches.length !== 1) {
-                 // Ignore if multiple fingers released simultaneously in a complex gesture
-                 return;
-             }
+            if (isPanningCamera) {
+                isPanningCamera = false; lastPanY = null;
+                // console.log("Touch Pan End"); // DEBUG
+                // Optional: Add momentum here later
+            }
 
             if (isDraggingObject) {
                 // console.log("Touch Drag End"); // DEBUG
-                // Restore original rotation speed for momentum
-                if (draggedObject && draggedObject.userData) {
-                    const originalSpeed = draggedObject.userData.originalRotationSpeed ?? 0;
-                    draggedObject.userData.targetRotationSpeed = originalSpeed;
-                }
-                isDraggingObject = false; // Flag drag as ended
-                // Momentum decay and clearing draggedObject ref happens in animate()
+                if (draggedObject && draggedObject.userData) { const originalSpeed = draggedObject.userData.originalRotationSpeed ?? 0; draggedObject.userData.targetRotationSpeed = originalSpeed; }
+                isDraggingObject = false;
             }
-            // No touch selection box handling currently
+            // Reset selection state just in case (though not used by touch currently)
+             isDraggingSelection = false;
         }
 
-
-        // --- animate (Increased Zoom Power) ---
+        // --- animate (Complete) ---
         function animate() {
-             requestAnimationFrame(animate);
-             const delta = clock.getDelta(); const deltaFactor = Math.min(delta, 0.05);
-             let posStopped = true, zoomStopped = true, rotStopped = true;
-
-             // Camera Smooth Scrolling
-             if (camera && Math.abs(camera.position.y - cameraTargetY) > 0.001) { camera.position.y += (cameraTargetY - camera.position.y) * cameraLerpFactor; }
-             else if (camera) { camera.position.y = cameraTargetY; } // Snap
-
-             // Object Momentum/Interaction
-             if (draggedObject) {
-                if (draggedObject.userData && draggedObject.position) {
-                     // Position Momentum
-                     if (!isDraggingObject && objectVelocity.lengthSq() > velocityStopThreshold * velocityStopThreshold) { posStopped = false; draggedObject.position.addScaledVector(objectVelocity, deltaFactor * 60); objectVelocity.multiplyScalar(dampingFactor); } else if (!isDraggingObject && objectVelocity.lengthSq() > 0) { objectVelocity.set(0,0,0); } else if (isDraggingObject) { posStopped = false; }
-                     // Zoom Momentum
-                     if (Math.abs(zoomVelocity) > zoomStopThreshold) { zoomStopped = false; try { const zoomDirection = draggedObject.position.clone().sub(camera.position).normalize(); const moveAmount = zoomVelocity * 80 * deltaFactor; /* Increased Multiplier */ draggedObject.position.addScaledVector(zoomDirection, moveAmount); zoomVelocity *= zoomDampingFactor; } catch (e) { console.error("Zoom error:", e); zoomVelocity = 0; } } else if (zoomVelocity !== 0) { zoomVelocity = 0; }
-                     // Rotation Damping/Acceleration
-                     const currentSpeed = draggedObject.userData.rotationSpeed ?? 0; const targetSpeed = draggedObject.userData.targetRotationSpeed ?? 0; if (Math.abs(targetSpeed - currentSpeed) > rotationStopThreshold) { rotStopped = false; const lerpFactor = 1.0 - Math.exp(-rotationDampingFactor * deltaFactor * 100); draggedObject.userData.rotationSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, lerpFactor); } else if (currentSpeed !== targetSpeed) { draggedObject.userData.rotationSpeed = targetSpeed; }
-                     // Check if stopped
-                     if (!isDraggingObject && posStopped && zoomStopped && rotStopped) { draggedObject = null; }
-                 } else { console.warn("Dragged object missing data"); draggedObject = null; isDraggingObject = false; objectVelocity.set(0,0,0); zoomVelocity = 0; }
-             }
-
-             // Apply Rotation to ALL models
-             defaultModels.forEach(model => { if(model?.userData?.rotationSpeed) { model.rotation.z += model.userData.rotationSpeed * 50 * deltaFactor; } });
-
-             // Rendering
-             if (composer) { try { composer.render(); } catch(e) { console.error("Composer render error:", e); } } else if (renderer && scene && camera) { try { renderer.render(scene, camera); } catch(e) { console.error("Basic render error:", e); } }
+             requestAnimationFrame(animate); const delta = clock.getDelta(); const deltaFactor = Math.min(delta, 0.05); let posStopped = true, zoomStopped = true, rotStopped = true;
+             if (camera && Math.abs(camera.position.y - cameraTargetY) > 0.001) { camera.position.y += (cameraTargetY - camera.position.y) * cameraLerpFactor; } else if (camera) { camera.position.y = cameraTargetY; } // Camera Lerp
+             if (draggedObject) { /* Object Momentum (Position, Zoom, Rotation) - same as previous */ if (draggedObject.userData && draggedObject.position) { if (!isDraggingObject && objectVelocity.lengthSq() > velocityStopThreshold * velocityStopThreshold) { posStopped = false; draggedObject.position.addScaledVector(objectVelocity, deltaFactor * 60); objectVelocity.multiplyScalar(dampingFactor); } else if (!isDraggingObject && objectVelocity.lengthSq() > 0) { objectVelocity.set(0,0,0); } else if (isDraggingObject) { posStopped = false; } if (Math.abs(zoomVelocity) > zoomStopThreshold) { zoomStopped = false; try { const zoomDirection = draggedObject.position.clone().sub(camera.position).normalize(); const moveAmount = zoomVelocity * 80 * deltaFactor; /* Increased Multiplier */ draggedObject.position.addScaledVector(zoomDirection, moveAmount); zoomVelocity *= zoomDampingFactor; } catch (e) { console.error("Zoom error:", e); zoomVelocity = 0; } } else if (zoomVelocity !== 0) { zoomVelocity = 0; } const currentSpeed = draggedObject.userData.rotationSpeed ?? 0; const targetSpeed = draggedObject.userData.targetRotationSpeed ?? 0; if (Math.abs(targetSpeed - currentSpeed) > rotationStopThreshold) { rotStopped = false; const lerpFactor = 1.0 - Math.exp(-rotationDampingFactor * deltaFactor * 100); draggedObject.userData.rotationSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, lerpFactor); } else if (currentSpeed !== targetSpeed) { draggedObject.userData.rotationSpeed = targetSpeed; } if (!isDraggingObject && posStopped && zoomStopped && rotStopped) { draggedObject = null; } } else { console.warn("Dragged object missing data"); draggedObject = null; isDraggingObject = false; objectVelocity.set(0,0,0); zoomVelocity = 0; } }
+             defaultModels.forEach(model => { if(model?.userData?.rotationSpeed) { model.rotation.z += model.userData.rotationSpeed * 50 * deltaFactor; } }); // Apply Rotation
+             if (composer) { try { composer.render(); } catch(e) { console.error("Composer render error:", e); } } else if (renderer && scene && camera) { try { renderer.render(scene, camera); } catch(e) { console.error("Basic render error:", e); } } // Rendering
         }
 
         // --- UI Logic ---
         const themeToggleButton = document.getElementById('theme-toggle-button');
-        if (themeToggleButton) { themeToggleButton.addEventListener('click', () => { document.body.classList.toggle('dark-theme'); }); }
-        else { console.warn("Theme toggle button not found."); }
+        if (themeToggleButton) { themeToggleButton.addEventListener('click', () => { document.body.classList.toggle('dark-theme'); }); } else { console.warn("Theme toggle button not found."); }
 
         // --- Initialize ---
         init3DBackground();
