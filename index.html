@@ -14,7 +14,7 @@
         }
     </script>
     <style>
-        /* --- CSS (Complete - No changes from previous version) --- */
+        /* --- CSS (Complete - No changes) --- */
         :root {
             --accent-color: #FFFF00; --bg-color: #ffffff; --text-color: #000000;
             --box-bg-color: rgba(255, 255, 255, 0.8); --nav-bg-color: rgba(255, 255, 255, 0.75);
@@ -31,11 +31,15 @@
         }
         body.dark-theme ::selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
         body.dark-theme ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-smooth: never; -webkit-font-smoothing: none; cursor: var(--custom-cursor); transition: background-color 0.3s, color 0.3s; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-smooth: never; -webkit-font-smoothing: none; cursor: var(--custom-cursor); transition: background-color 0.3s, color 0.3s;
+            /* Prevent pull-to-refresh/overscroll effects interfering with touch */
+            overscroll-behavior: none;
+        }
         ::selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
         ::-moz-selection { background-color: var(--accent-color); color: #000000; text-shadow: none; }
-        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0.9; }
-        #main-view-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; visibility: visible; opacity: 1; }
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0.9; touch-action: none; /* Prevent default touch actions like panning/zooming on the canvas */ }
+        #main-view-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; visibility: visible; opacity: 1; pointer-events: none; /* Allow clicks/touches to pass through to canvas unless hitting specific UI */ }
+        #main-view-container > * { pointer-events: auto; /* Re-enable pointer events for UI children */ }
         #construction-message { position: absolute; top: 75px; left: 15px; transform: none; font-size: 11px; font-family: Arial, Helvetica, sans-serif; font-weight: normal; color: var(--text-color); text-shadow: none; z-index: 15; text-align: left; text-transform: uppercase; letter-spacing: 0.1em; transition: color 0.3s; }
         .nav-item { position: absolute; font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: bold; cursor: pointer; padding: 5px 7px; z-index: 15; background-color: transparent; color: var(--text-color); transition: color 0.1s linear; border: none; text-decoration: none; white-space: nowrap; overflow: visible; cursor: inherit !important; }
         #nav-name { font-family: 'Times New Roman', Times, serif; font-style: italic; font-size: 22px; padding: 5px 8px; border: none; position: absolute; top: 15px; left: 15px; z-index: 16; transform: skewX(-5deg); text-shadow: none; background-color: transparent; color: var(--text-color); cursor: default; }
@@ -52,8 +56,15 @@
         body.dark-theme #theme-toggle-button .sun-icon { display: none; }
         #selection-box { position: fixed; border: 1px dashed var(--selection-border); background-color: var(--selection-bg); pointer-events: none; display: none; z-index: 200; transition: border-color 0.3s, background-color 0.3s; }
         body.dark-theme #selection-box { border-color: var(--accent-color); background-color: rgba(255, 255, 0, 0.1); }
-        #cursor-blob { position: fixed; width: 8px; height: 8px; background-color: var(--cursor-blob-color); border-radius: 50%; filter: blur(1px); pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background-color 0.3s; }
+        #cursor-blob { position: fixed; width: 8px; height: 8px; background-color: var(--cursor-blob-color); border-radius: 50%; filter: blur(1px); pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background-color 0.3s; display: block; /* Ensure visible */ }
+        /* Hide blob on touch devices where it's less useful */
+        @media (hover: none) and (pointer: coarse) {
+            #cursor-blob { display: none; }
+            html, body { cursor: auto; } /* Use default system cursor on touch devices */
+            body.dark-theme { cursor: auto; }
+        }
         #gaussian-blob { display: none; }
+
     </style>
 </head>
 <body>
@@ -88,7 +99,7 @@
         const clock = new THREE.Clock();
         let selectionContrastPass, ditherPass, blurPass;
         let raycaster;
-        let mouse;
+        let mouse; // Stores normalized device coordinates for raycasting
         let currentlyHoveredGroup = null;
         const defaultMaterialColor = new THREE.Color(0x888888);
         let loadedModelCount = 0;
@@ -109,167 +120,108 @@
         const rotationDampingFactor = 0.04;
         const rotationStopThreshold = 0.0001;
         let zoomVelocity = 0;
-        const zoomSensitivityFactor = -0.03; // Keep increased sensitivity
+        const zoomSensitivityFactor = -0.03;
         const zoomDampingFactor = 0.90;
         const zoomStopThreshold = 0.001;
-        let isDraggingSelection = false; let startX = 0, startY = 0;
+        let isDraggingSelection = false; let startX = 0, startY = 0; // Selection primarily for mouse
         const selectionBox = document.getElementById('selection-box');
 
         // --- Shaders (Complete Definitions) ---
-        const BlurShader = {
-            uniforms: { 'tDiffuse': { value: null }, 'resolution': { value: new THREE.Vector2() }, 'blurRadius': { value: 2.0 } },
-            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
-            fragmentShader: ` uniform sampler2D tDiffuse; uniform vec2 resolution; uniform float blurRadius; varying vec2 vUv; void main() { vec2 texel = vec2( 1.0 / resolution.x, 1.0 / resolution.y ) * blurRadius; vec4 sum = vec4( 0.0 ); sum += texture2D( tDiffuse, vUv - texel * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, -texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv ); sum += texture2D( tDiffuse, vUv + vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(-texel.x, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + texel * 1.0 ); gl_FragColor = sum / 9.0; }`
-        };
-        const DitherShaderColor = {
-            uniforms: { 'tDiffuse': { value: null }, 'ditherScale': { value: 4.0 }, },
-            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
-            fragmentShader: ` uniform sampler2D tDiffuse; uniform float ditherScale; varying vec2 vUv; mat4 bayer4 = mat4( 0.0, 0.5, 0.125, 0.625, 0.75, 0.25, 0.875, 0.375, 0.1875, 0.6875, 0.0625, 0.5625, 0.9375, 0.4375, 0.8125, 0.3125 ); float threshold(float val, float limit){ return step(limit, val); } void main() { vec4 color = texture2D( tDiffuse, vUv ); vec2 coord = floor( mod( gl_FragCoord.xy, ditherScale ) ); float limit = bayer4[int(coord.x)][int(coord.y)]; float ditheredR = threshold( color.r, limit ); float ditheredG = threshold( color.g, limit ); float ditheredB = threshold( color.b, limit ); vec3 ditheredColor = vec3(ditheredR, ditheredG, ditheredB); gl_FragColor = vec4( ditheredColor, color.a ); }`
-        };
-        const SelectionContrastShader = {
-            uniforms: { 'tDiffuse': { value: null }, 'contrast': { value: 3.0 }, 'u_selectionBox': { value: new THREE.Vector4(0,0,0,0) }, 'resolution': { value: new THREE.Vector2() }, },
-            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
-            fragmentShader: ` uniform sampler2D tDiffuse; uniform float contrast; uniform vec4 u_selectionBox; uniform vec2 resolution; varying vec2 vUv; bool isInBox(vec4 box) { return gl_FragCoord.x >= box.x && gl_FragCoord.x <= box.z && gl_FragCoord.y >= box.y && gl_FragCoord.y <= box.w; } float applyContrast(float colorVal, float contrastFactor) { return clamp((colorVal - 0.5) * contrastFactor + 0.5, 0.0, 1.0); } void main() { vec4 ditheredInputColor = texture2D(tDiffuse, vUv); vec3 finalColor; bool boxIsValid = u_selectionBox.z > u_selectionBox.x && u_selectionBox.w > u_selectionBox.y; if (boxIsValid && isInBox(u_selectionBox)) { vec3 invertedColor = vec3(1.0) - ditheredInputColor.rgb; finalColor.r = applyContrast(invertedColor.r, 10.0); finalColor.g = applyContrast(invertedColor.g, 10.0); finalColor.b = applyContrast(invertedColor.b, 10.0); } else { finalColor.r = applyContrast(ditheredInputColor.r, contrast); finalColor.g = applyContrast(ditheredInputColor.g, contrast); finalColor.b = applyContrast(ditheredInputColor.b, contrast); } gl_FragColor = vec4(finalColor, ditheredInputColor.a); }`
-        };
+        const BlurShader = { uniforms: { 'tDiffuse': { value: null }, 'resolution': { value: new THREE.Vector2() }, 'blurRadius': { value: 2.0 } }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`, fragmentShader: ` uniform sampler2D tDiffuse; uniform vec2 resolution; uniform float blurRadius; varying vec2 vUv; void main() { vec2 texel = vec2( 1.0 / resolution.x, 1.0 / resolution.y ) * blurRadius; vec4 sum = vec4( 0.0 ); sum += texture2D( tDiffuse, vUv - texel * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, -texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv - vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv ); sum += texture2D( tDiffuse, vUv + vec2(0.0, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(-texel.x, texel.y) * 1.0 ); sum += texture2D( tDiffuse, vUv + vec2(texel.x, 0.0) * 1.0 ); sum += texture2D( tDiffuse, vUv + texel * 1.0 ); gl_FragColor = sum / 9.0; }` };
+        const DitherShaderColor = { uniforms: { 'tDiffuse': { value: null }, 'ditherScale': { value: 4.0 }, }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`, fragmentShader: ` uniform sampler2D tDiffuse; uniform float ditherScale; varying vec2 vUv; mat4 bayer4 = mat4( 0.0, 0.5, 0.125, 0.625, 0.75, 0.25, 0.875, 0.375, 0.1875, 0.6875, 0.0625, 0.5625, 0.9375, 0.4375, 0.8125, 0.3125 ); float threshold(float val, float limit){ return step(limit, val); } void main() { vec4 color = texture2D( tDiffuse, vUv ); vec2 coord = floor( mod( gl_FragCoord.xy, ditherScale ) ); float limit = bayer4[int(coord.x)][int(coord.y)]; float ditheredR = threshold( color.r, limit ); float ditheredG = threshold( color.g, limit ); float ditheredB = threshold( color.b, limit ); vec3 ditheredColor = vec3(ditheredR, ditheredG, ditheredB); gl_FragColor = vec4( ditheredColor, color.a ); }` };
+        const SelectionContrastShader = { uniforms: { 'tDiffuse': { value: null }, 'contrast': { value: 3.0 }, 'u_selectionBox': { value: new THREE.Vector4(0,0,0,0) }, 'resolution': { value: new THREE.Vector2() }, }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`, fragmentShader: ` uniform sampler2D tDiffuse; uniform float contrast; uniform vec4 u_selectionBox; uniform vec2 resolution; varying vec2 vUv; bool isInBox(vec4 box) { return gl_FragCoord.x >= box.x && gl_FragCoord.x <= box.z && gl_FragCoord.y >= box.y && gl_FragCoord.y <= box.w; } float applyContrast(float colorVal, float contrastFactor) { return clamp((colorVal - 0.5) * contrastFactor + 0.5, 0.0, 1.0); } void main() { vec4 ditheredInputColor = texture2D(tDiffuse, vUv); vec3 finalColor; bool boxIsValid = u_selectionBox.z > u_selectionBox.x && u_selectionBox.w > u_selectionBox.y; if (boxIsValid && isInBox(u_selectionBox)) { vec3 invertedColor = vec3(1.0) - ditheredInputColor.rgb; finalColor.r = applyContrast(invertedColor.r, 10.0); finalColor.g = applyContrast(invertedColor.g, 10.0); finalColor.b = applyContrast(invertedColor.b, 10.0); } else { finalColor.r = applyContrast(ditheredInputColor.r, contrast); finalColor.g = applyContrast(ditheredInputColor.g, contrast); finalColor.b = applyContrast(ditheredInputColor.b, contrast); } gl_FragColor = vec4(finalColor, ditheredInputColor.a); }` };
 
         // --- Model Paths (Complete List) ---
-        const objModelPaths = [
-             '3dmodelsnew/virtual_scenes_2_chevaux.001.obj', '3dmodelsnew/virtual_scenes_1_cheval_soleil.001.obj', '3dmodelsnew/variousai_4_truc_de_la_mer.001.obj', '3dmodelsnew/variousai_3_poissongun1.004.obj', '3dmodelsnew/variousai_2_bouteille_pendouille.001.obj', '3dmodelsnew/variousai1_batman_squat.001.obj', '3dmodelsnew/various_2costume_gonflable_rose.001.obj', '3dmodelsnew/various_1_hotrel.obj', '3dmodelsnew/various3d_3_lingue_framboise.obj', '3dmodelsnew/various3d_2_rfamboise.obj', '3dmodelsnew/variou3d_1_truc.obj', '3dmodelsnew/tn_black_gold.001.obj', '3dmodelsnew/sneakers_2chaussures_moyen_ageuses_moche.001.obj', '3dmodelsnew/sneakers_1_chaussure_puzzle.001.obj', '3dmodelsnew/sneakers3_chaussures_turlupette.001.obj', '3dmodelsnew/relics_3_zezette.obj', '3dmodelsnew/relics_2_pecheur.obj', '3dmodelsnew/relics_1_chateau.obj', '3dmodelsnew/pink_statue.001.obj', '3dmodelsnew/pink_3_frites.obj', '3dmodelsnew/pink_2_aspi.obj', '3dmodelsnew/pink_1_.obj', '3dmodelsnew/photos_3_chapeau_concombre.001.obj', '3dmodelsnew/photos_2_parpaing_marbre.001.obj', '3dmodelsnew/photos_1_masque_catch.001.obj', '3dmodelsnew/humeurs_4_masque_catch_2.002.obj', '3dmodelsnew/humeurs_3_masque_catcheurr.001.obj', '3dmodelsnew/humeurs_2_tortueninj.001.obj', '3dmodelsnew/humeurs_1_tete_coeur_blue.001.obj', '3dmodelsnew/diogenes_4_gateau_asperges.001.obj', '3dmodelsnew/diogenes_3_gateau_glaces_cool.001.obj', '3dmodelsnew/diogenes_2_gateau_jesus.001.obj', '3dmodelsnew/diogenes_1_veste_fraise.001.obj', '3dmodelsnew/digiartifacts_3_corail_blanc.001.obj', '3dmodelsnew/digiartifacts_2_corail.001.obj', '3dmodelsnew/digiartifacts_1_alien_blue.001.obj', '3dmodelsnew/dessins_2_main_mains.001.obj', '3dmodelsnew/dessins_1_main_arcenciel.obj', '3dmodelsnew/dessins3_ggateau_cascade.001.obj', '3dmodelsnew/commissions_5__telephone_rose.obj', '3dmodelsnew/commissions1_gateau_chien_etoiles.001.obj', '3dmodelsnew/commisions_4_tn_crampons.001.obj', '3dmodelsnew/commisions_3_gateau_lgbt.001.obj', '3dmodelsnew/commisions2_ordirosetmpybs5kasq.001.obj', '3dmodelsnew/collection_1_savon.obj', '3dmodelsnew/chaussure_banane.001.obj', '3dmodelsnew/chaise_tri_yolo.001.obj', '3dmodelsnew/3dprint_4_bougie_gateau_gothique.001.obj', '3dmodelsnew/3dprint_2_assiette_de_gelee.001.obj', '3dmodelsnew/3dprint_1_tmp14jvzq03.001.obj', '3dmodelsnew/3dprint3_fontaine_2_jouvence.001.obj'
-        ];
+        const objModelPaths = [ '3dmodelsnew/virtual_scenes_2_chevaux.001.obj', '3dmodelsnew/virtual_scenes_1_cheval_soleil.001.obj', '3dmodelsnew/variousai_4_truc_de_la_mer.001.obj', '3dmodelsnew/variousai_3_poissongun1.004.obj', '3dmodelsnew/variousai_2_bouteille_pendouille.001.obj', '3dmodelsnew/variousai1_batman_squat.001.obj', '3dmodelsnew/various_2costume_gonflable_rose.001.obj', '3dmodelsnew/various_1_hotrel.obj', '3dmodelsnew/various3d_3_lingue_framboise.obj', '3dmodelsnew/various3d_2_rfamboise.obj', '3dmodelsnew/variou3d_1_truc.obj', '3dmodelsnew/tn_black_gold.001.obj', '3dmodelsnew/sneakers_2chaussures_moyen_ageuses_moche.001.obj', '3dmodelsnew/sneakers_1_chaussure_puzzle.001.obj', '3dmodelsnew/sneakers3_chaussures_turlupette.001.obj', '3dmodelsnew/relics_3_zezette.obj', '3dmodelsnew/relics_2_pecheur.obj', '3dmodelsnew/relics_1_chateau.obj', '3dmodelsnew/pink_statue.001.obj', '3dmodelsnew/pink_3_frites.obj', '3dmodelsnew/pink_2_aspi.obj', '3dmodelsnew/pink_1_.obj', '3dmodelsnew/photos_3_chapeau_concombre.001.obj', '3dmodelsnew/photos_2_parpaing_marbre.001.obj', '3dmodelsnew/photos_1_masque_catch.001.obj', '3dmodelsnew/humeurs_4_masque_catch_2.002.obj', '3dmodelsnew/humeurs_3_masque_catcheurr.001.obj', '3dmodelsnew/humeurs_2_tortueninj.001.obj', '3dmodelsnew/humeurs_1_tete_coeur_blue.001.obj', '3dmodelsnew/diogenes_4_gateau_asperges.001.obj', '3dmodelsnew/diogenes_3_gateau_glaces_cool.001.obj', '3dmodelsnew/diogenes_2_gateau_jesus.001.obj', '3dmodelsnew/diogenes_1_veste_fraise.001.obj', '3dmodelsnew/digiartifacts_3_corail_blanc.001.obj', '3dmodelsnew/digiartifacts_2_corail.001.obj', '3dmodelsnew/digiartifacts_1_alien_blue.001.obj', '3dmodelsnew/dessins_2_main_mains.001.obj', '3dmodelsnew/dessins_1_main_arcenciel.obj', '3dmodelsnew/dessins3_ggateau_cascade.001.obj', '3dmodelsnew/commissions_5__telephone_rose.obj', '3dmodelsnew/commissions1_gateau_chien_etoiles.001.obj', '3dmodelsnew/commisions_4_tn_crampons.001.obj', '3dmodelsnew/commisions_3_gateau_lgbt.001.obj', '3dmodelsnew/commisions2_ordirosetmpybs5kasq.001.obj', '3dmodelsnew/collection_1_savon.obj', '3dmodelsnew/chaussure_banane.001.obj', '3dmodelsnew/chaise_tri_yolo.001.obj', '3dmodelsnew/3dprint_4_bougie_gateau_gothique.001.obj', '3dmodelsnew/3dprint_2_assiette_de_gelee.001.obj', '3dmodelsnew/3dprint_1_tmp14jvzq03.001.obj', '3dmodelsnew/3dprint3_fontaine_2_jouvence.001.obj' ];
 
         // --- Helper Function: Create B&W Material (Complete) ---
-        function createBWVersion(originalMaterial) {
-             if (!originalMaterial) { return new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); }
-             let grayColor = defaultMaterialColor.clone();
-             if (originalMaterial.color) { const luminance = originalMaterial.color.getHSL({ h: 0, s: 0, l: 0 }).l; grayColor.setHSL(0, 0, luminance); }
-             const bwMaterial = new THREE.MeshStandardMaterial({ color: grayColor, map: null, roughness: originalMaterial.roughness !== undefined ? originalMaterial.roughness : 0.8, metalness: originalMaterial.metalness !== undefined ? originalMaterial.metalness : 0.1, side: originalMaterial.side !== undefined ? originalMaterial.side : THREE.FrontSide, flatShading: false });
-             return bwMaterial;
-        }
+        function createBWVersion(originalMaterial) { if (!originalMaterial) { return new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); } let grayColor = defaultMaterialColor.clone(); if (originalMaterial.color) { const luminance = originalMaterial.color.getHSL({ h: 0, s: 0, l: 0 }).l; grayColor.setHSL(0, 0, luminance); } const bwMaterial = new THREE.MeshStandardMaterial({ color: grayColor, map: null, roughness: originalMaterial.roughness !== undefined ? originalMaterial.roughness : 0.8, metalness: originalMaterial.metalness !== undefined ? originalMaterial.metalness : 0.1, side: originalMaterial.side !== undefined ? originalMaterial.side : THREE.FrontSide, flatShading: false }); return bwMaterial; }
 
-        // --- Arrange Models in Grid Function (Margins, Mobile Columns, Initial Speed) ---
+        // --- Arrange Models in Grid Function (Top Margin, Mobile Columns, Initial Speed) ---
         function arrangeModelsInGrid() {
             console.log("Arranging models in adaptive grid...");
             const numModels = defaultModels.length;
             if (numModels === 0 || !camera) { console.warn("Cannot arrange grid: No models or camera."); return; }
 
-            // --- Adaptive Columns Calculation (1 for mobile) ---
+            // --- Adaptive Columns Calculation (2 for mobile) ---
             let gridCols;
             const screenWidth = window.innerWidth;
-            if (screenWidth < 600) { // Mobile portrait / small screens breakpoint
-                gridCols = 1;
-            } else if (screenWidth < 960) { // Tablet / smaller desktop breakpoint
+            if (screenWidth < 768) { // Mobile/small tablet breakpoint
+                gridCols = 2;
+            } else if (screenWidth < 1024) { // Medium screens
                 gridCols = 3;
-            } else { // Wider desktop
+            } else { // Wider screens
                 gridCols = 4;
             }
             const gridRows = Math.ceil(numModels / gridCols);
 
             // --- Spacing Calculation (Increased Horizontal Margin) ---
-            const distance = camera.position.z;
-            const vFov = THREE.MathUtils.degToRad(camera.fov);
-            const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
-            const visibleWidth = visibleHeight * camera.aspect;
+            const distance = camera.position.z; const vFov = THREE.MathUtils.degToRad(camera.fov); const visibleHeight = 2 * Math.tan(vFov / 2) * distance; const visibleWidth = visibleHeight * camera.aspect;
+            const gridWidth = visibleWidth * 0.70; // Use 70% of width
+            const spacingX = gridCols > 1 ? gridWidth / (gridCols - 1) : 0; const spacingY = 8;
 
-            // Horizontal spacing: Use less width for more margin
-            const gridWidth = visibleWidth * 0.70; // <-- ADJUSTED HORIZONTAL MARGIN (use 70% of width)
-            const spacingX = gridCols > 1 ? gridWidth / (gridCols - 1) : 0;
-
-            // Vertical spacing: Keep relatively large fixed value
-            const spacingY = 8; // Adjust this value to control vertical density
-
-            // --- Position Calculation (Center X for 1 column) ---
-            // Adjust offsetX for the 1-column case
-            const offsetX = gridCols > 1 ? -gridWidth / 2 : 0; // Center X at 0 if only 1 column
-            const initialOffsetY = (visibleHeight / 2) * 0.8; // Start grid near top of initial view
+            // --- Position Calculation (Lowered Top Margin, Center X for 1/2 cols) ---
+            const offsetX = gridCols > 1 ? -gridWidth / 2 : 0; // Center X if 1 col
+            const initialOffsetY = (visibleHeight / 2) * 0.5; // <-- ADJUSTED TOP MARGIN (lower start pos)
             const gridZ = 0;
 
             // --- Position Each Model & Set Initial Speed ---
             defaultModels.forEach((model, index) => {
-                const col = index % gridCols;
-                const row = Math.floor(index / gridCols);
-
-                const x = offsetX + col * spacingX; // Correctly centers for 1 column now
-                const y = initialOffsetY - row * spacingY;
-                const z = gridZ + (Math.random() - 0.5) * 2; // Slight random Z
-
+                const col = index % gridCols; const row = Math.floor(index / gridCols);
+                const x = offsetX + col * spacingX; const y = initialOffsetY - row * spacingY; const z = gridZ + (Math.random() - 0.5) * 2;
                 model.position.set(x, y, z); // Set position
-
-                // --- Set Initial Rotation Speed --- <--- NEW LOGIC
-                if (model.userData) {
-                    const initialSpeed = model.userData.originalRotationSpeed ?? (Math.random() - 0.5) * 0.01; // Use stored speed, or fallback
-                    model.userData.rotationSpeed = initialSpeed;
-                    model.userData.targetRotationSpeed = initialSpeed; // Start rotating immediately
-                } else {
-                    // Ensure userData exists and assign initial speed
-                    const initialSpeed = (Math.random() - 0.5) * 0.01;
-                    model.userData = {
-                        rotationSpeed: initialSpeed,
-                        targetRotationSpeed: initialSpeed,
-                        originalRotationSpeed: initialSpeed // Store it if it was missing
-                    };
-                }
+                // Set Initial Rotation Speed
+                if (model.userData) { const initialSpeed = model.userData.originalRotationSpeed ?? (Math.random() - 0.5) * 0.01; model.userData.rotationSpeed = initialSpeed; model.userData.targetRotationSpeed = initialSpeed; }
+                else { const initialSpeed = (Math.random() - 0.5) * 0.01; model.userData = { rotationSpeed: initialSpeed, targetRotationSpeed: initialSpeed, originalRotationSpeed: initialSpeed }; }
             });
 
             // --- Calculate Scroll Limits ---
-            const totalGridHeight = gridRows > 1 ? (gridRows - 1) * spacingY : 0;
-            const contentHeight = totalGridHeight + visibleHeight * 0.2; // Add some padding below last row
-            maxCameraY = 0;
-            if (contentHeight > visibleHeight) { minCameraY = -(contentHeight - visibleHeight); } else { minCameraY = 0; }
+            const totalGridHeight = gridRows > 1 ? (gridRows - 1) * spacingY : 0; const contentHeight = totalGridHeight + visibleHeight * 0.2;
+            maxCameraY = 0; if (contentHeight > visibleHeight) { minCameraY = -(contentHeight - visibleHeight); } else { minCameraY = 0; }
             camera.position.y = 0; cameraTargetY = 0; // Reset camera position Y
             console.log(`Grid arranged: ${gridCols}x${gridRows}. Scroll range [${minCameraY.toFixed(2)}, ${maxCameraY.toFixed(2)}]`);
         }
 
 
-        // --- init3DBackground (loadObj speed setting removed) ---
+        // --- init3DBackground (Touch Listeners Added) ---
         function init3DBackground() {
-            console.log("Attempting init Three.js Scrolling Grid v1.2.0 (Margins + Initial Spin)...");
+            console.log("Attempting init Three.js Scrolling Grid v1.3.0 (Touch Drag)...");
              try {
                  // Basic Setup
                  const canvas = document.getElementById('bg-canvas'); if (!canvas) { throw new Error("#bg-canvas not found!"); } scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 15; camera.position.y = 0; try { renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true }); } catch (e) { console.error("FAIL: Create WebGLRenderer", e); alert("WebGL Error."); return; } renderer.setSize(window.innerWidth, window.innerHeight); renderer.setClearColor(0x000000, 0); raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2(); const ambientLight = new THREE.AmbientLight(0xcccccc, 0.6); scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9); directionalLight.position.set(10, 15, 10); scene.add(directionalLight); composer = new EffectComposer(renderer); const renderPass = new RenderPass(scene, camera); composer.addPass(renderPass); blurPass = new ShaderPass(BlurShader); blurPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(blurPass); ditherPass = new ShaderPass(DitherShaderColor); composer.addPass(ditherPass); selectionContrastPass = new ShaderPass(SelectionContrastShader); selectionContrastPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(selectionContrastPass); console.log("INFO: Basic scene, renderer, composer setup OK.");
 
                  // Loaders & Model Loading
-                 const mtlLoader = new MTLLoader(); const objLoader = new OBJLoader(); const totalModelsToLoad = objModelPaths.length; loadedModelCount = 0; allModelsLoaded = false;
-                 console.log(`INFO: Loading ${totalModelsToLoad} models...`);
-                 objModelPaths.forEach(objPath => {
-                     const mtlPath = objPath.replace('.obj', '.mtl'); const modelName = objPath.split('/').pop();
-                     mtlLoader.load(mtlPath, (materials) => { materials.preload(); objLoader.setMaterials(materials); loadObj(objPath, modelName, true); }, undefined, (error) => { console.warn(`MTL Error ${modelName}:`, error); objLoader.setMaterials(null); loadObj(objPath, modelName, false); }); });
-
-                 function loadObj(objPath, modelName, mtlLoaded) {
+                 const mtlLoader = new MTLLoader(); const objLoader = new OBJLoader(); const totalModelsToLoad = objModelPaths.length; loadedModelCount = 0; allModelsLoaded = false; console.log(`INFO: Loading ${totalModelsToLoad} models...`);
+                 objModelPaths.forEach(objPath => { const mtlPath = objPath.replace('.obj', '.mtl'); const modelName = objPath.split('/').pop(); mtlLoader.load(mtlPath, (materials) => { materials.preload(); objLoader.setMaterials(materials); loadObj(objPath, modelName, true); }, undefined, (error) => { console.warn(`MTL Error ${modelName}:`, error); objLoader.setMaterials(null); loadObj(objPath, modelName, false); }); });
+                 function loadObj(objPath, modelName, mtlLoaded) { /* ... same as previous ... */
                      objLoader.load(objPath, (object) => { // Success
                          console.log(`DEBUG: OBJ loaded ${mtlLoaded ? 'WITH' : 'WITHOUT'} MTL: ${modelName}`);
                          try {
                              object.traverse(function (child) { // Material Setup
-                                if (child.isMesh) {
-                                    let originalMat = null; if (!child.userData) child.userData = {};
-                                    if (!child.material) { child.material = new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); originalMat = child.material; } else { originalMat = Array.isArray(child.material) ? child.material[0] : child.material; if (originalMat) { if (originalMat.hasOwnProperty('flatShading')) { originalMat.flatShading = false; } } else { originalMat = new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); child.material = originalMat; } }
-                                    child.userData.originalMaterial = originalMat.clone(); child.userData.bwMaterial = createBWVersion(originalMat); child.material = child.userData.bwMaterial; child.raycast = new THREE.Mesh().raycast;
-                                }});
-                             // Scale
-                             const randomScaleFactor = Math.random() * 0.3 + 0.6;
-                             const baseScale = 6.5; // Keep increased base scale
-                             const finalScale = baseScale * randomScaleFactor;
-                             object.scale.set(finalScale, finalScale, finalScale);
-                             // Initial Random Rotation
-                             object.rotation.x = Math.random() * Math.PI * 2; object.rotation.y = Math.random() * Math.PI * 2; object.rotation.z = Math.random() * Math.PI * 2;
-                             // Store Original Rotation Speed (active speed set later in arrangeModelsInGrid)
-                             if (!object.userData) object.userData = {};
-                             object.userData.originalRotationSpeed = (Math.random() - 0.5) * 0.015; // Store potential speed
-                             // DO NOT set rotationSpeed/targetRotationSpeed to 0 here anymore
-
-                             // Add & Count
-                             defaultModels.push(object); scene.add(object); loadedModelCount++; console.log(`DEBUG: ${modelName} processed (${loadedModelCount}/${totalModelsToLoad}).`);
+                                if (child.isMesh) { let originalMat = null; if (!child.userData) child.userData = {}; if (!child.material) { child.material = new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); originalMat = child.material; } else { originalMat = Array.isArray(child.material) ? child.material[0] : child.material; if (originalMat) { if (originalMat.hasOwnProperty('flatShading')) { originalMat.flatShading = false; } } else { originalMat = new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); child.material = originalMat; } } child.userData.originalMaterial = originalMat.clone(); child.userData.bwMaterial = createBWVersion(originalMat); child.material = child.userData.bwMaterial; child.raycast = new THREE.Mesh().raycast; }});
+                             const randomScaleFactor = Math.random() * 0.3 + 0.6; const baseScale = 6.5; const finalScale = baseScale * randomScaleFactor; object.scale.set(finalScale, finalScale, finalScale); // Scale
+                             object.rotation.x = Math.random() * Math.PI * 2; object.rotation.y = Math.random() * Math.PI * 2; object.rotation.z = Math.random() * Math.PI * 2; // Initial Random Rotation
+                             if (!object.userData) object.userData = {}; object.userData.originalRotationSpeed = (Math.random() - 0.5) * 0.015; // Store Original Speed
+                             defaultModels.push(object); scene.add(object); loadedModelCount++; console.log(`DEBUG: ${modelName} processed (${loadedModelCount}/${totalModelsToLoad}).`); // Add & Count
                              if (!allModelsLoaded && loadedModelCount === totalModelsToLoad) { allModelsLoaded = true; arrangeModelsInGrid(); }
                          } catch(e) { console.error(`ERROR processing ${modelName}:`, e); loadedModelCount++; if (!allModelsLoaded && loadedModelCount === totalModelsToLoad) { allModelsLoaded = true; arrangeModelsInGrid(); } }
                      }, undefined, (error) => { console.error(`ERROR loading ${modelName}:`, error); loadedModelCount++; if (!allModelsLoaded && loadedModelCount === totalModelsToLoad) { allModelsLoaded = true; arrangeModelsInGrid(); } });
                  }
 
-                 // Event Listeners
+                 // --- Event Listeners (Mouse + Touch Added) ---
+                 // Mouse Listeners
                  window.addEventListener('resize', onWindowResize, false);
-                 window.addEventListener('mousemove', onMouseMoveForBlob, false);
-                 window.addEventListener('mousemove', onDocumentMouseMove, false);
-                 window.addEventListener('mousedown', onDocumentMouseDown, false);
-                 window.addEventListener('mouseup', onDocumentMouseUp, false);
-                 window.addEventListener('wheel', onDocumentMouseWheel, { passive: false });
+                 window.addEventListener('mousemove', onMouseMoveForBlob, false); // Cursor blob only
+                 window.addEventListener('mousemove', onDocumentMouseMove, false); // Hover, Drag Move, Selection Move
+                 window.addEventListener('mousedown', onDocumentMouseDown, false); // Drag Start, Selection Start
+                 window.addEventListener('mouseup', onDocumentMouseUp, false);     // Drag End, Selection End
+                 window.addEventListener('wheel', onDocumentMouseWheel, { passive: false }); // Zoom / Camera Scroll
+
+                 // Touch Listeners (for basic object drag)
+                 window.addEventListener('touchstart', onTouchStart, { passive: false });
+                 window.addEventListener('touchmove', onTouchMove, { passive: false });
+                 window.addEventListener('touchend', onTouchEnd, false);
+
 
                  animate();
                  console.log("INFO: Animation loop started.");
@@ -277,17 +229,15 @@
         }
 
         // --- Event Handlers ---
-        function onWindowResize() {
-             if (!camera || !renderer || !composer) return;
-             camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-             renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
-             composer.passes.forEach(pass => { if (pass.uniforms && pass.uniforms.resolution) { pass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight); } });
-             if (allModelsLoaded) { arrangeModelsInGrid(); } // Recalculate grid & reset camera Y
+        function onWindowResize() { /* ... same ... */
+             if (!camera || !renderer || !composer) return; camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); composer.passes.forEach(pass => { if (pass.uniforms && pass.uniforms.resolution) { pass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight); } }); if (allModelsLoaded) { arrangeModelsInGrid(); }
         }
         const cursorBlob = document.getElementById('cursor-blob');
-        function onMouseMoveForBlob(event) {
+        function onMouseMoveForBlob(event) { /* ... same ... */
              if (cursorBlob) { cursorBlob.style.left = `${event.clientX}px`; cursorBlob.style.top = `${event.clientY}px`; }
         }
+
+        // --- Mouse Handlers (Mostly Unchanged) ---
         function onDocumentMouseDown(event) {
              isDraggingObject = false; isDraggingSelection = false; draggedObject = null; if (event.target.closest('button, a, #nav-name, footer')) { return; } mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; raycaster.setFromCamera(mouse, camera); const intersects = raycaster.intersectObjects(defaultModels, true); if (intersects.length > 0) { isDraggingObject = true; let clickedGroup = intersects[0].object; while (clickedGroup.parent && clickedGroup.parent !== scene) { clickedGroup = clickedGroup.parent; } if (defaultModels.includes(clickedGroup)) { draggedObject = clickedGroup; const intersectionPointWorld = intersects[0].point; const cameraDirection = camera.getWorldDirection(new THREE.Vector3()); dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), intersectionPointWorld); dragOffset.copy(intersectionPointWorld).sub(draggedObject.position); objectVelocity.set(0, 0, 0); zoomVelocity = 0; if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; } document.body.style.cursor = 'grabbing'; } else { console.warn("WARN: Clicked group not found."); draggedObject = null; isDraggingObject = false; } } else { isDraggingSelection = true; startX = event.clientX; startY = event.clientY; Object.assign(selectionBox.style, { left: `${startX}px`, top: `${startY}px`, width: '0px', height: '0px', display: 'block' }); document.body.style.userSelect = 'none'; }
         }
@@ -297,34 +247,152 @@
         function onDocumentMouseUp(event) {
              if (isDraggingObject) { document.body.style.cursor = ''; if (draggedObject && draggedObject.userData) { const originalSpeed = draggedObject.userData.originalRotationSpeed ?? 0; draggedObject.userData.targetRotationSpeed = originalSpeed; } isDraggingObject = false; } if (isDraggingSelection) { isDraggingSelection = false; selectionBox.style.display = 'none'; document.body.style.userSelect = ''; if (selectionContrastPass) { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); } }
         }
-        // Updated Mouse Wheel Handler structure
-        function onDocumentMouseWheel(event) {
-            // If actively dragging selection box, ignore completely
-            if (isDraggingSelection) {
+        function onDocumentMouseWheel(event) { // Updated structure
+            if (isDraggingSelection) { return; } // Ignore if dragging selection
+            if (draggedObject) { // Handle OBJECT ZOOM if selected/coasting
+                event.preventDefault(); zoomVelocity += event.deltaY * zoomSensitivityFactor;
+                if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; }
+                return; // Don't do camera scroll
+            }
+            if (minCameraY !== maxCameraY) { // Handle CAMERA SCROLL if enabled
+                event.preventDefault(); cameraTargetY -= event.deltaY * 0.02;
+                cameraTargetY = Math.max(minCameraY, Math.min(maxCameraY, cameraTargetY));
+            }
+        }
+
+        // --- Touch Handlers ---
+        function onTouchStart(event) {
+            // Ignore multi-touch gestures for now
+            if (event.touches.length !== 1) {
+                // If a drag was in progress, end it prematurely on multi-touch
+                if (isDraggingObject) {
+                    isDraggingObject = false;
+                    if (draggedObject && draggedObject.userData) {
+                        draggedObject.userData.targetRotationSpeed = draggedObject.userData.originalRotationSpeed ?? 0;
+                    }
+                     // draggedObject = null; // Let animate clear it
+                }
                 return;
             }
 
-            // If an object is selected (being dragged OR coasting)
-            if (draggedObject) {
-                // Apply OBJECT ZOOM
-                event.preventDefault(); // Prevent page scroll
-                zoomVelocity += event.deltaY * zoomSensitivityFactor;
-                // Stop object rotation while zooming for better control
-                if (draggedObject.userData) {
-                    draggedObject.userData.targetRotationSpeed = 0;
-                }
-                // console.log("ZOOM: zoomVelocity:", zoomVelocity.toFixed(4)); // DEBUG
-                return; // Don't do camera scroll
+            const touch = event.touches[0];
+            const touchX = touch.clientX;
+            const touchY = touch.clientY;
+
+            // Check if touch hits a UI element (button, link, etc.)
+            const touchedElement = document.elementFromPoint(touchX, touchY);
+            if (touchedElement && touchedElement.closest('button, a, footer, #nav-name')) {
+                // console.log("Touch on UI element ignored."); // DEBUG
+                return; // Allow default touch behavior for UI
             }
 
-            // If NO object is selected/coasting, and not dragging selection -> CAMERA SCROLL
-            if (minCameraY !== maxCameraY) { // Check if scrolling is enabled
-                event.preventDefault(); // Prevent default page scroll
-                cameraTargetY -= event.deltaY * 0.02; // Update target (adjust sensitivity 0.02?)
-                cameraTargetY = Math.max(minCameraY, Math.min(maxCameraY, cameraTargetY)); // Clamp
-                // console.log("SCROLL: cameraTargetY:", cameraTargetY.toFixed(2)); // DEBUG
+            // --- Touch on Canvas/Background ---
+            isDraggingObject = false;
+            isDraggingSelection = false; // Disable selection box via touch for now
+            draggedObject = null;
+
+            // Update mouse vector for raycasting based on touch
+            mouse.x = (touchX / window.innerWidth) * 2 - 1;
+            mouse.y = -(touchY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(defaultModels, true);
+
+            if (intersects.length > 0) {
+                // Find the top-level group
+                let clickedGroup = intersects[0].object;
+                while (clickedGroup.parent && clickedGroup.parent !== scene) {
+                    clickedGroup = clickedGroup.parent;
+                }
+
+                if (defaultModels.includes(clickedGroup)) {
+                    isDraggingObject = true;
+                    draggedObject = clickedGroup;
+                    // console.log(`Touch Drag Start: ${draggedObject.id}`); // DEBUG
+
+                    const intersectionPointWorld = intersects[0].point;
+                    const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
+                    dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), intersectionPointWorld);
+                    dragOffset.copy(intersectionPointWorld).sub(draggedObject.position);
+
+                    // Reset motion state
+                    objectVelocity.set(0, 0, 0);
+                    zoomVelocity = 0; // Reset zoom on new touch drag
+                    if (draggedObject.userData) {
+                        draggedObject.userData.targetRotationSpeed = 0; // Stop rotation
+                    }
+                     // No preventDefault here, allow potential "tap" behavior if needed later
+                } else {
+                     console.warn("Touch hit object, but group not found.");
+                }
+            } else {
+                // Touched background - could potentially initiate camera pan later
+                // console.log("Touch on background"); // DEBUG
             }
         }
+
+        function onTouchMove(event) {
+            if (!isDraggingObject || !draggedObject) {
+                // If not dragging an object, don't prevent scroll, allow native touch scrolling/panning for the page (if body wasn't overflow:hidden)
+                // If we implement touch-based camera panning later, this would change.
+                return;
+            }
+
+             // We are dragging an object, prevent browser scrolling/zooming
+             event.preventDefault();
+
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                const touchX = touch.clientX;
+                const touchY = touch.clientY;
+
+                // Update mouse vector for raycasting
+                mouse.x = (touchX / window.innerWidth) * 2 - 1;
+                mouse.y = -(touchY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+
+                // Calculate new position based on intersection with drag plane
+                if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) {
+                    const newPosition = intersectionPoint.clone().sub(dragOffset);
+                    // Update velocity for momentum calculation in animate()
+                    objectVelocity.copy(newPosition).sub(draggedObject.position);
+                    // Directly update position
+                    draggedObject.position.copy(newPosition);
+                }
+            } else {
+                 // Multi-touch during drag - cancel the drag?
+                 if (isDraggingObject) {
+                     // console.log("Multi-touch during drag - cancelling."); // DEBUG
+                     isDraggingObject = false;
+                     if (draggedObject && draggedObject.userData) {
+                         draggedObject.userData.targetRotationSpeed = draggedObject.userData.originalRotationSpeed ?? 0;
+                     }
+                     // Let animate clear draggedObject ref based on momentum stopping
+                 }
+            }
+        }
+
+        function onTouchEnd(event) {
+            // Use changedTouches as event.touches will be empty
+             if (event.changedTouches.length !== 1) {
+                 // Ignore if multiple fingers released simultaneously in a complex gesture
+                 return;
+             }
+
+            if (isDraggingObject) {
+                // console.log("Touch Drag End"); // DEBUG
+                // Restore original rotation speed for momentum
+                if (draggedObject && draggedObject.userData) {
+                    const originalSpeed = draggedObject.userData.originalRotationSpeed ?? 0;
+                    draggedObject.userData.targetRotationSpeed = originalSpeed;
+                }
+                isDraggingObject = false; // Flag drag as ended
+                // Momentum decay and clearing draggedObject ref happens in animate()
+            }
+            // No touch selection box handling currently
+        }
+
 
         // --- animate (Increased Zoom Power) ---
         function animate() {
@@ -341,33 +409,12 @@
                 if (draggedObject.userData && draggedObject.position) {
                      // Position Momentum
                      if (!isDraggingObject && objectVelocity.lengthSq() > velocityStopThreshold * velocityStopThreshold) { posStopped = false; draggedObject.position.addScaledVector(objectVelocity, deltaFactor * 60); objectVelocity.multiplyScalar(dampingFactor); } else if (!isDraggingObject && objectVelocity.lengthSq() > 0) { objectVelocity.set(0,0,0); } else if (isDraggingObject) { posStopped = false; }
-
                      // Zoom Momentum
-                     if (Math.abs(zoomVelocity) > zoomStopThreshold) {
-                         zoomStopped = false;
-                         try {
-                             const zoomDirection = draggedObject.position.clone().sub(camera.position).normalize();
-                             // Increase multiplier for more zoom effect
-                             const moveAmount = zoomVelocity * 80 * deltaFactor; // <-- INCREASED ZOOM MULTIPLIER
-                             // console.log("ZOOM Apply: Velo=", zoomVelocity.toFixed(4), "Amount=", moveAmount.toFixed(4)); // DEBUG
-                             draggedObject.position.addScaledVector(zoomDirection, moveAmount);
-                             zoomVelocity *= zoomDampingFactor;
-                         } catch (e) { console.error("Zoom error:", e); zoomVelocity = 0; }
-                     } else if (zoomVelocity !== 0) {
-                         // console.log("ZOOM Snap Stop: Velo=", zoomVelocity.toFixed(4)); // DEBUG
-                         zoomVelocity = 0;
-                     }
-
+                     if (Math.abs(zoomVelocity) > zoomStopThreshold) { zoomStopped = false; try { const zoomDirection = draggedObject.position.clone().sub(camera.position).normalize(); const moveAmount = zoomVelocity * 80 * deltaFactor; /* Increased Multiplier */ draggedObject.position.addScaledVector(zoomDirection, moveAmount); zoomVelocity *= zoomDampingFactor; } catch (e) { console.error("Zoom error:", e); zoomVelocity = 0; } } else if (zoomVelocity !== 0) { zoomVelocity = 0; }
                      // Rotation Damping/Acceleration
-                     const currentSpeed = draggedObject.userData.rotationSpeed ?? 0; const targetSpeed = draggedObject.userData.targetRotationSpeed ?? 0;
-                     if (Math.abs(targetSpeed - currentSpeed) > rotationStopThreshold) { rotStopped = false; const lerpFactor = 1.0 - Math.exp(-rotationDampingFactor * deltaFactor * 100); draggedObject.userData.rotationSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, lerpFactor); }
-                     else if (currentSpeed !== targetSpeed) { draggedObject.userData.rotationSpeed = targetSpeed; }
-
+                     const currentSpeed = draggedObject.userData.rotationSpeed ?? 0; const targetSpeed = draggedObject.userData.targetRotationSpeed ?? 0; if (Math.abs(targetSpeed - currentSpeed) > rotationStopThreshold) { rotStopped = false; const lerpFactor = 1.0 - Math.exp(-rotationDampingFactor * deltaFactor * 100); draggedObject.userData.rotationSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, lerpFactor); } else if (currentSpeed !== targetSpeed) { draggedObject.userData.rotationSpeed = targetSpeed; }
                      // Check if stopped
-                     if (!isDraggingObject && posStopped && zoomStopped && rotStopped) {
-                         // console.log("Clearing draggedObject"); // DEBUG
-                         draggedObject = null;
-                     }
+                     if (!isDraggingObject && posStopped && zoomStopped && rotStopped) { draggedObject = null; }
                  } else { console.warn("Dragged object missing data"); draggedObject = null; isDraggingObject = false; objectVelocity.set(0,0,0); zoomVelocity = 0; }
              }
 
