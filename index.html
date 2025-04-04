@@ -14,13 +14,8 @@
         }
     </script>
     <style>
-        /* CSS identical to the previous working version */
-        /* Reminder: Check YOUR lines 371 & 373 for empty CSS rulesets */
-        :root { /* ... */ } body.dark-theme { /* ... */ } html, body { /* ... */ }
-        #nav-name { font-size: 22px; padding: 5px 8px; /* ... */ }
-        footer { /* No background */ /* ... */ }
-        /* ... etc ... Full CSS rules from previous versions ... */
-         :root {
+        /* --- CSS (Complete - No changes from previous version) --- */
+        :root {
             --accent-color: #FFFF00; --bg-color: #ffffff; --text-color: #000000;
             --box-bg-color: rgba(255, 255, 255, 0.8); --nav-bg-color: rgba(255, 255, 255, 0.75);
             --footer-text-color: #555; --border-color: #000; --selection-border: #000000;
@@ -46,7 +41,7 @@
         #nav-name { font-family: 'Times New Roman', Times, serif; font-style: italic; font-size: 22px; padding: 5px 8px; border: none; position: absolute; top: 15px; left: 15px; z-index: 16; transform: skewX(-5deg); text-shadow: none; background-color: transparent; color: var(--text-color); cursor: default; }
         #nav-name::before { display: none; }
         #nav-name:hover { color: var(--accent-color); background-color: transparent; }
-        footer { position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; padding: 5px 0; font-size: 10px; color: var(--footer-text-color); z-index: 100; transition: color 0.3s; border: none; } /* No background */
+        footer { position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; padding: 5px 0; font-size: 10px; color: var(--footer-text-color); z-index: 100; transition: color 0.3s; border: none; background: none; }
         #theme-toggle-button { position: fixed; top: 15px; right: 15px; z-index: 110; padding: 4px; line-height: 0; background-color: var(--bg-color); color: var(--text-color); border: 1px solid var(--text-color); transition: background-color 0.3s, color 0.3s, border-color 0.3s; cursor: inherit !important; }
         #theme-toggle-button svg { width: 16px; height: 16px; vertical-align: top; }
         #theme-toggle-button .sun-icon svg { stroke: currentColor; }
@@ -59,7 +54,6 @@
         body.dark-theme #selection-box { border-color: var(--accent-color); background-color: rgba(255, 255, 0, 0.1); }
         #cursor-blob { position: fixed; width: 8px; height: 8px; background-color: var(--cursor-blob-color); border-radius: 50%; filter: blur(1px); pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background-color 0.3s; }
         #gaussian-blob { display: none; }
-
     </style>
 </head>
 <body>
@@ -68,8 +62,8 @@
     <div id="cursor-blob"></div>
     <div id="main-view-container">
         <button id="theme-toggle-button" title="Changer le thème">
-             <span class="sun-icon"> <svg></svg> </span>
-             <span class="moon-icon"> <svg></svg> </span>
+             <span class="sun-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></span>
+             <span class="moon-icon"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21.64,13.5c-0.14,0-0.28,0-0.42,0.02 c-0.88,0.13-1.75,0.4-2.55,0.79c-2.44,1.2-4.01,3.6-4.01,6.19c0,0.83,0.16,1.63,0.45,2.37 c0.43,1.08,1.16,2.01,2.09,2.71c0.06,0.04,0.12,0.07,0.18,0.1c0.06,0.03,0.12,0.04,0.19,0.04c0.07,0,0.14-0.01,0.2-0.04 c0.13-0.05,0.23-0.16,0.28-0.3c0.05-0.13,0.04-0.28-0.04-0.4c-0.51-0.84-0.84-1.8-0.95-2.83c-0.03-0.27-0.05-0.54-0.05-0.81 c0-2.06,0.94-3.91,2.46-5.13c1.04-0.84,2.26-1.36,3.57-1.46c0.15-0.01,0.29-0.02,0.43-0.02c0.3,0,0.57-0.17,0.7-0.43 c0.13-0.27,0.08-0.58-0.11-0.78C22.48,13.68,22.08,13.5,21.64,13.5L21.64,13.5z"></path></svg></span>
         </button>
         <span id="nav-name" class="nav-item">Antonin Wattel</span>
         <div id="construction-message">UNDER CONSTRUCTION</div>
@@ -97,21 +91,31 @@
         let mouse;
         let currentlyHoveredGroup = null;
         const defaultMaterialColor = new THREE.Color(0x888888);
+        let loadedModelCount = 0;
+        let allModelsLoaded = false;
+
+        // --- Camera Scroll State ---
+        let cameraTargetY = 0;
+        let minCameraY = 0;
+        let maxCameraY = 0;
+        const cameraLerpFactor = 0.08;
 
         // --- Interaction State ---
         let isDraggingObject = false; let draggedObject = null;
         const dragPlane = new THREE.Plane(); const intersectionPoint = new THREE.Vector3();
         const dragOffset = new THREE.Vector3(); const objectVelocity = new THREE.Vector3();
-        const dampingFactor = 0.92; // Adjusted damping
+        const dampingFactor = 0.92;
         const velocityStopThreshold = 0.001;
-        const rotationDampingFactor = 0.04; // Adjusted damping
+        const rotationDampingFactor = 0.04;
         const rotationStopThreshold = 0.0001;
-        let zoomVelocity = 0; const zoomSensitivityFactor = -0.01;
-        const zoomDampingFactor = 0.90; const zoomStopThreshold = 0.001;
+        let zoomVelocity = 0;
+        const zoomSensitivityFactor = -0.03; // Keep increased sensitivity
+        const zoomDampingFactor = 0.90;
+        const zoomStopThreshold = 0.001;
         let isDraggingSelection = false; let startX = 0, startY = 0;
         const selectionBox = document.getElementById('selection-box');
 
-        // --- Shaders (Declared ONCE and ONLY ONCE) ---
+        // --- Shaders (Complete Definitions) ---
         const BlurShader = {
             uniforms: { 'tDiffuse': { value: null }, 'resolution': { value: new THREE.Vector2() }, 'blurRadius': { value: 2.0 } },
             vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
@@ -128,49 +132,147 @@
             fragmentShader: ` uniform sampler2D tDiffuse; uniform float contrast; uniform vec4 u_selectionBox; uniform vec2 resolution; varying vec2 vUv; bool isInBox(vec4 box) { return gl_FragCoord.x >= box.x && gl_FragCoord.x <= box.z && gl_FragCoord.y >= box.y && gl_FragCoord.y <= box.w; } float applyContrast(float colorVal, float contrastFactor) { return clamp((colorVal - 0.5) * contrastFactor + 0.5, 0.0, 1.0); } void main() { vec4 ditheredInputColor = texture2D(tDiffuse, vUv); vec3 finalColor; bool boxIsValid = u_selectionBox.z > u_selectionBox.x && u_selectionBox.w > u_selectionBox.y; if (boxIsValid && isInBox(u_selectionBox)) { vec3 invertedColor = vec3(1.0) - ditheredInputColor.rgb; finalColor.r = applyContrast(invertedColor.r, 10.0); finalColor.g = applyContrast(invertedColor.g, 10.0); finalColor.b = applyContrast(invertedColor.b, 10.0); } else { finalColor.r = applyContrast(ditheredInputColor.r, contrast); finalColor.g = applyContrast(ditheredInputColor.g, contrast); finalColor.b = applyContrast(ditheredInputColor.b, contrast); } gl_FragColor = vec4(finalColor, ditheredInputColor.a); }`
         };
 
-        // --- Model Paths ---
+        // --- Model Paths (Complete List) ---
         const objModelPaths = [
-             '3dmodels/poisson_pik_jaune.obj','3dmodels/raie_jaune.obj','3dmodels/reptile_fun.obj',
-             '3dmodels/rhino_legumes.obj','3dmodels/becane.obj','3dmodels/alien_blue.obj',
-             '3dmodels/figurine_velo.obj','3dmodels/batman_squat.obj','3dmodels/tete_coeur_blue.obj',
-             '3dmodels/assiette_de_gelee.obj','3dmodels/deco_moyen_age_2.obj',
-             '3dmodels/masque_sanglier_metal.obj','3dmodels/bonhomme_moyen_age.obj','3dmodels/16.obj',
-             '3dmodels/oeuf_pieds_soleil.obj','3dmodels/aristocrate_long_noze.obj',
-             '3dmodels/chaussures_moyen_ageuses_moche.obj','3dmodels/chaise.obj','3dmodels/bonhomme_chatte.obj'
+             '3dmodelsnew/virtual_scenes_2_chevaux.001.obj', '3dmodelsnew/virtual_scenes_1_cheval_soleil.001.obj', '3dmodelsnew/variousai_4_truc_de_la_mer.001.obj', '3dmodelsnew/variousai_3_poissongun1.004.obj', '3dmodelsnew/variousai_2_bouteille_pendouille.001.obj', '3dmodelsnew/variousai1_batman_squat.001.obj', '3dmodelsnew/various_2costume_gonflable_rose.001.obj', '3dmodelsnew/various_1_hotrel.obj', '3dmodelsnew/various3d_3_lingue_framboise.obj', '3dmodelsnew/various3d_2_rfamboise.obj', '3dmodelsnew/variou3d_1_truc.obj', '3dmodelsnew/tn_black_gold.001.obj', '3dmodelsnew/sneakers_2chaussures_moyen_ageuses_moche.001.obj', '3dmodelsnew/sneakers_1_chaussure_puzzle.001.obj', '3dmodelsnew/sneakers3_chaussures_turlupette.001.obj', '3dmodelsnew/relics_3_zezette.obj', '3dmodelsnew/relics_2_pecheur.obj', '3dmodelsnew/relics_1_chateau.obj', '3dmodelsnew/pink_statue.001.obj', '3dmodelsnew/pink_3_frites.obj', '3dmodelsnew/pink_2_aspi.obj', '3dmodelsnew/pink_1_.obj', '3dmodelsnew/photos_3_chapeau_concombre.001.obj', '3dmodelsnew/photos_2_parpaing_marbre.001.obj', '3dmodelsnew/photos_1_masque_catch.001.obj', '3dmodelsnew/humeurs_4_masque_catch_2.002.obj', '3dmodelsnew/humeurs_3_masque_catcheurr.001.obj', '3dmodelsnew/humeurs_2_tortueninj.001.obj', '3dmodelsnew/humeurs_1_tete_coeur_blue.001.obj', '3dmodelsnew/diogenes_4_gateau_asperges.001.obj', '3dmodelsnew/diogenes_3_gateau_glaces_cool.001.obj', '3dmodelsnew/diogenes_2_gateau_jesus.001.obj', '3dmodelsnew/diogenes_1_veste_fraise.001.obj', '3dmodelsnew/digiartifacts_3_corail_blanc.001.obj', '3dmodelsnew/digiartifacts_2_corail.001.obj', '3dmodelsnew/digiartifacts_1_alien_blue.001.obj', '3dmodelsnew/dessins_2_main_mains.001.obj', '3dmodelsnew/dessins_1_main_arcenciel.obj', '3dmodelsnew/dessins3_ggateau_cascade.001.obj', '3dmodelsnew/commissions_5__telephone_rose.obj', '3dmodelsnew/commissions1_gateau_chien_etoiles.001.obj', '3dmodelsnew/commisions_4_tn_crampons.001.obj', '3dmodelsnew/commisions_3_gateau_lgbt.001.obj', '3dmodelsnew/commisions2_ordirosetmpybs5kasq.001.obj', '3dmodelsnew/collection_1_savon.obj', '3dmodelsnew/chaussure_banane.001.obj', '3dmodelsnew/chaise_tri_yolo.001.obj', '3dmodelsnew/3dprint_4_bougie_gateau_gothique.001.obj', '3dmodelsnew/3dprint_2_assiette_de_gelee.001.obj', '3dmodelsnew/3dprint_1_tmp14jvzq03.001.obj', '3dmodelsnew/3dprint3_fontaine_2_jouvence.001.obj'
         ];
 
-        // --- Helper Function: Create B&W Material ---
+        // --- Helper Function: Create B&W Material (Complete) ---
         function createBWVersion(originalMaterial) {
-             if (!originalMaterial) { return new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1 }); }
+             if (!originalMaterial) { return new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); }
              let grayColor = defaultMaterialColor.clone();
-             if (originalMaterial.color) { const luminance = originalMaterial.color.r * 0.2126 + originalMaterial.color.g * 0.7152 + originalMaterial.color.b * 0.0722; grayColor.setRGB(luminance, luminance, luminance); }
-             const bwMaterial = new THREE.MeshStandardMaterial({ color: grayColor, map: null, roughness: originalMaterial.roughness !== undefined ? originalMaterial.roughness : 0.8, metalness: originalMaterial.metalness !== undefined ? originalMaterial.metalness : 0.1, side: originalMaterial.side !== undefined ? originalMaterial.side : THREE.FrontSide, });
+             if (originalMaterial.color) { const luminance = originalMaterial.color.getHSL({ h: 0, s: 0, l: 0 }).l; grayColor.setHSL(0, 0, luminance); }
+             const bwMaterial = new THREE.MeshStandardMaterial({ color: grayColor, map: null, roughness: originalMaterial.roughness !== undefined ? originalMaterial.roughness : 0.8, metalness: originalMaterial.metalness !== undefined ? originalMaterial.metalness : 0.1, side: originalMaterial.side !== undefined ? originalMaterial.side : THREE.FrontSide, flatShading: false });
              return bwMaterial;
         }
 
-        // --- init3DBackground ---
+        // --- Arrange Models in Grid Function (Margins, Mobile Columns, Initial Speed) ---
+        function arrangeModelsInGrid() {
+            console.log("Arranging models in adaptive grid...");
+            const numModels = defaultModels.length;
+            if (numModels === 0 || !camera) { console.warn("Cannot arrange grid: No models or camera."); return; }
+
+            // --- Adaptive Columns Calculation (1 for mobile) ---
+            let gridCols;
+            const screenWidth = window.innerWidth;
+            if (screenWidth < 600) { // Mobile portrait / small screens breakpoint
+                gridCols = 1;
+            } else if (screenWidth < 960) { // Tablet / smaller desktop breakpoint
+                gridCols = 3;
+            } else { // Wider desktop
+                gridCols = 4;
+            }
+            const gridRows = Math.ceil(numModels / gridCols);
+
+            // --- Spacing Calculation (Increased Horizontal Margin) ---
+            const distance = camera.position.z;
+            const vFov = THREE.MathUtils.degToRad(camera.fov);
+            const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+            const visibleWidth = visibleHeight * camera.aspect;
+
+            // Horizontal spacing: Use less width for more margin
+            const gridWidth = visibleWidth * 0.70; // <-- ADJUSTED HORIZONTAL MARGIN (use 70% of width)
+            const spacingX = gridCols > 1 ? gridWidth / (gridCols - 1) : 0;
+
+            // Vertical spacing: Keep relatively large fixed value
+            const spacingY = 8; // Adjust this value to control vertical density
+
+            // --- Position Calculation (Center X for 1 column) ---
+            // Adjust offsetX for the 1-column case
+            const offsetX = gridCols > 1 ? -gridWidth / 2 : 0; // Center X at 0 if only 1 column
+            const initialOffsetY = (visibleHeight / 2) * 0.8; // Start grid near top of initial view
+            const gridZ = 0;
+
+            // --- Position Each Model & Set Initial Speed ---
+            defaultModels.forEach((model, index) => {
+                const col = index % gridCols;
+                const row = Math.floor(index / gridCols);
+
+                const x = offsetX + col * spacingX; // Correctly centers for 1 column now
+                const y = initialOffsetY - row * spacingY;
+                const z = gridZ + (Math.random() - 0.5) * 2; // Slight random Z
+
+                model.position.set(x, y, z); // Set position
+
+                // --- Set Initial Rotation Speed --- <--- NEW LOGIC
+                if (model.userData) {
+                    const initialSpeed = model.userData.originalRotationSpeed ?? (Math.random() - 0.5) * 0.01; // Use stored speed, or fallback
+                    model.userData.rotationSpeed = initialSpeed;
+                    model.userData.targetRotationSpeed = initialSpeed; // Start rotating immediately
+                } else {
+                    // Ensure userData exists and assign initial speed
+                    const initialSpeed = (Math.random() - 0.5) * 0.01;
+                    model.userData = {
+                        rotationSpeed: initialSpeed,
+                        targetRotationSpeed: initialSpeed,
+                        originalRotationSpeed: initialSpeed // Store it if it was missing
+                    };
+                }
+            });
+
+            // --- Calculate Scroll Limits ---
+            const totalGridHeight = gridRows > 1 ? (gridRows - 1) * spacingY : 0;
+            const contentHeight = totalGridHeight + visibleHeight * 0.2; // Add some padding below last row
+            maxCameraY = 0;
+            if (contentHeight > visibleHeight) { minCameraY = -(contentHeight - visibleHeight); } else { minCameraY = 0; }
+            camera.position.y = 0; cameraTargetY = 0; // Reset camera position Y
+            console.log(`Grid arranged: ${gridCols}x${gridRows}. Scroll range [${minCameraY.toFixed(2)}, ${maxCameraY.toFixed(2)}]`);
+        }
+
+
+        // --- init3DBackground (loadObj speed setting removed) ---
         function init3DBackground() {
-            console.log("Attempting init Three.js Smooth Momentum v1.9.2...");
+            console.log("Attempting init Three.js Scrolling Grid v1.2.0 (Margins + Initial Spin)...");
              try {
-                // Basic Setup, Lighting, Post-processing...
-                const canvas = document.getElementById('bg-canvas'); if (!canvas) { throw new Error("#bg-canvas not found!"); } scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 15; try { renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true }); } catch (e) { console.error("FAIL: Create WebGLRenderer", e); alert("WebGL Error."); return; } renderer.setSize(window.innerWidth, window.innerHeight); renderer.setClearColor(0xffffff, 0); raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2(); const ambientLight = new THREE.AmbientLight(0xcccccc, 0.6); scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9); directionalLight.position.set(10, 15, 10); scene.add(directionalLight); composer = new EffectComposer(renderer); const renderPass = new RenderPass(scene, camera); composer.addPass(renderPass); blurPass = new ShaderPass(BlurShader); blurPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(blurPass); ditherPass = new ShaderPass(DitherShaderColor); composer.addPass(ditherPass); selectionContrastPass = new ShaderPass(SelectionContrastShader); selectionContrastPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(selectionContrastPass); console.log("INFO: Basic scene, renderer, composer setup OK.");
+                 // Basic Setup
+                 const canvas = document.getElementById('bg-canvas'); if (!canvas) { throw new Error("#bg-canvas not found!"); } scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 15; camera.position.y = 0; try { renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true }); } catch (e) { console.error("FAIL: Create WebGLRenderer", e); alert("WebGL Error."); return; } renderer.setSize(window.innerWidth, window.innerHeight); renderer.setClearColor(0x000000, 0); raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2(); const ambientLight = new THREE.AmbientLight(0xcccccc, 0.6); scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9); directionalLight.position.set(10, 15, 10); scene.add(directionalLight); composer = new EffectComposer(renderer); const renderPass = new RenderPass(scene, camera); composer.addPass(renderPass); blurPass = new ShaderPass(BlurShader); blurPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(blurPass); ditherPass = new ShaderPass(DitherShaderColor); composer.addPass(ditherPass); selectionContrastPass = new ShaderPass(SelectionContrastShader); selectionContrastPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight); composer.addPass(selectionContrastPass); console.log("INFO: Basic scene, renderer, composer setup OK.");
 
-                // Loaders & Model Loading
-                const mtlLoader = new MTLLoader(); const objLoader = new OBJLoader(); console.log(`INFO: Loading ${objModelPaths.length} models...`); objModelPaths.forEach(objPath => { const mtlPath = objPath.replace('.obj', '.mtl'); const modelName = objPath.split('/').pop(); mtlLoader.load(mtlPath, (materials) => { materials.preload(); console.log(`DEBUG: MTL loaded for ${modelName}`); objLoader.setMaterials(materials); loadObj(objPath, modelName, true); }, undefined, (error) => { console.warn(`WARN: MTL load failed for ${mtlPath}. (${modelName})`, error); objLoader.setMaterials(null); loadObj(objPath, modelName, false); }); });
-                function loadObj(objPath, modelName, mtlLoaded) { objLoader.load(objPath, (object) => { console.log(`DEBUG: OBJ loaded ${mtlLoaded ? 'AVEC' : 'SANS'} MTL: ${modelName}`); try { object.traverse(function (child) { if (child.isMesh) { if (!child.material) { child.material = new THREE.MeshStandardMaterial({ color: defaultMaterialColor }); console.warn(`WARN: Mesh in ${modelName} had no material, applied default.`); } const originalMat = Array.isArray(child.material) ? child.material[0] : child.material; if (originalMat) { child.userData.originalMaterial = originalMat.clone(); child.userData.bwMaterial = createBWVersion(originalMat); child.material = child.userData.bwMaterial; } else { console.warn(`WARN: Mesh in ${modelName} had invalid material.`); child.material = createBWVersion(null); child.userData.originalMaterial = child.material.clone(); child.userData.bwMaterial = child.material; } child.raycast = new THREE.Mesh().raycast; } }); } catch(e) { console.error(`ERROR: processing mesh materials for ${modelName}`, e); } const randomScaleFactor = Math.random() * 0.4 + 0.7; const baseScale = 5.0; const finalScale = baseScale * randomScaleFactor; object.scale.set(finalScale, finalScale, finalScale); object.position.x = (Math.random() - 0.5) * 40; object.position.y = (Math.random() - 0.5) * 30; object.position.z = (Math.random() - 0.5) * 30 - 15; object.rotation.x = Math.random() * Math.PI * 2; object.rotation.y = Math.random() * Math.PI * 2; object.userData.originalRotationSpeed = (Math.random() - 0.5) * 0.015; object.userData.rotationSpeed = object.userData.originalRotationSpeed; object.userData.targetRotationSpeed = object.userData.originalRotationSpeed; defaultModels.push(object); scene.add(object); console.log(`DEBUG: ${modelName} added.`); }, undefined, (error) => { console.error(`ERROR: OBJ load failed for ${modelName}:`, error); /* Add visual error? */ }); }
+                 // Loaders & Model Loading
+                 const mtlLoader = new MTLLoader(); const objLoader = new OBJLoader(); const totalModelsToLoad = objModelPaths.length; loadedModelCount = 0; allModelsLoaded = false;
+                 console.log(`INFO: Loading ${totalModelsToLoad} models...`);
+                 objModelPaths.forEach(objPath => {
+                     const mtlPath = objPath.replace('.obj', '.mtl'); const modelName = objPath.split('/').pop();
+                     mtlLoader.load(mtlPath, (materials) => { materials.preload(); objLoader.setMaterials(materials); loadObj(objPath, modelName, true); }, undefined, (error) => { console.warn(`MTL Error ${modelName}:`, error); objLoader.setMaterials(null); loadObj(objPath, modelName, false); }); });
 
+                 function loadObj(objPath, modelName, mtlLoaded) {
+                     objLoader.load(objPath, (object) => { // Success
+                         console.log(`DEBUG: OBJ loaded ${mtlLoaded ? 'WITH' : 'WITHOUT'} MTL: ${modelName}`);
+                         try {
+                             object.traverse(function (child) { // Material Setup
+                                if (child.isMesh) {
+                                    let originalMat = null; if (!child.userData) child.userData = {};
+                                    if (!child.material) { child.material = new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); originalMat = child.material; } else { originalMat = Array.isArray(child.material) ? child.material[0] : child.material; if (originalMat) { if (originalMat.hasOwnProperty('flatShading')) { originalMat.flatShading = false; } } else { originalMat = new THREE.MeshStandardMaterial({ color: defaultMaterialColor, roughness: 0.8, metalness: 0.1, flatShading: false }); child.material = originalMat; } }
+                                    child.userData.originalMaterial = originalMat.clone(); child.userData.bwMaterial = createBWVersion(originalMat); child.material = child.userData.bwMaterial; child.raycast = new THREE.Mesh().raycast;
+                                }});
+                             // Scale
+                             const randomScaleFactor = Math.random() * 0.3 + 0.6;
+                             const baseScale = 6.5; // Keep increased base scale
+                             const finalScale = baseScale * randomScaleFactor;
+                             object.scale.set(finalScale, finalScale, finalScale);
+                             // Initial Random Rotation
+                             object.rotation.x = Math.random() * Math.PI * 2; object.rotation.y = Math.random() * Math.PI * 2; object.rotation.z = Math.random() * Math.PI * 2;
+                             // Store Original Rotation Speed (active speed set later in arrangeModelsInGrid)
+                             if (!object.userData) object.userData = {};
+                             object.userData.originalRotationSpeed = (Math.random() - 0.5) * 0.015; // Store potential speed
+                             // DO NOT set rotationSpeed/targetRotationSpeed to 0 here anymore
 
-                // Event Listeners
-                window.addEventListener('resize', onWindowResize, false);
-                window.addEventListener('mousemove', onMouseMoveForBlob, false);
-                window.addEventListener('mousemove', onDocumentMouseMove, false); // Handles Hover AND Drag Move AND Selection Move
-                window.addEventListener('mousedown', onDocumentMouseDown, false); // Handles Drag Start OR Selection Start
-                window.addEventListener('mouseup', onDocumentMouseUp, false); // Handles Drag End OR Selection End
-                window.addEventListener('wheel', onDocumentMouseWheel, { passive: false }); // Use non-passive for preventDefault
+                             // Add & Count
+                             defaultModels.push(object); scene.add(object); loadedModelCount++; console.log(`DEBUG: ${modelName} processed (${loadedModelCount}/${totalModelsToLoad}).`);
+                             if (!allModelsLoaded && loadedModelCount === totalModelsToLoad) { allModelsLoaded = true; arrangeModelsInGrid(); }
+                         } catch(e) { console.error(`ERROR processing ${modelName}:`, e); loadedModelCount++; if (!allModelsLoaded && loadedModelCount === totalModelsToLoad) { allModelsLoaded = true; arrangeModelsInGrid(); } }
+                     }, undefined, (error) => { console.error(`ERROR loading ${modelName}:`, error); loadedModelCount++; if (!allModelsLoaded && loadedModelCount === totalModelsToLoad) { allModelsLoaded = true; arrangeModelsInGrid(); } });
+                 }
 
-                animate();
-                console.log("INFO: Animation loop started.");
+                 // Event Listeners
+                 window.addEventListener('resize', onWindowResize, false);
+                 window.addEventListener('mousemove', onMouseMoveForBlob, false);
+                 window.addEventListener('mousemove', onDocumentMouseMove, false);
+                 window.addEventListener('mousedown', onDocumentMouseDown, false);
+                 window.addEventListener('mouseup', onDocumentMouseUp, false);
+                 window.addEventListener('wheel', onDocumentMouseWheel, { passive: false });
 
+                 animate();
+                 console.log("INFO: Animation loop started.");
              } catch (error) { console.error("FATAL: Error during init3DBackground:", error); }
         }
 
@@ -180,175 +282,108 @@
              camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
              renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
              composer.passes.forEach(pass => { if (pass.uniforms && pass.uniforms.resolution) { pass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight); } });
+             if (allModelsLoaded) { arrangeModelsInGrid(); } // Recalculate grid & reset camera Y
         }
-
         const cursorBlob = document.getElementById('cursor-blob');
         function onMouseMoveForBlob(event) {
-            if (cursorBlob) { cursorBlob.style.left = `${event.clientX}px`; cursorBlob.style.top = `${event.clientY}px`; }
-         }
-
-        // --- Mousedown Handler (Combined Logic) ---
+             if (cursorBlob) { cursorBlob.style.left = `${event.clientX}px`; cursorBlob.style.top = `${event.clientY}px`; }
+        }
         function onDocumentMouseDown(event) {
-            // console.log("DEBUG: Mousedown event"); // Keep logs minimal for now
-            isDraggingObject = false; isDraggingSelection = false; draggedObject = null; // Reset flags
-
-            if (event.target.closest('button, a, #nav-name, footer')) { /*console.log("DEBUG: Mousedown ignored (UI element clicked).");*/ return; }
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(defaultModels, true);
-
-            if (intersects.length > 0) { // --- CLICKED ON OBJECT: Start Object Drag ---
-                // console.log("DEBUG: Mousedown hit object.");
-                isDraggingObject = true;
-                let clickedGroup = intersects[0].object; while (clickedGroup.parent && clickedGroup.parent !== scene) { clickedGroup = clickedGroup.parent; }
-
-                if (defaultModels.includes(clickedGroup)) {
-                    draggedObject = clickedGroup; console.log(`DEBUG: Dragging started on object: ${draggedObject.id}`);
-                    const intersectionPointWorld = intersects[0].point; const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
-                    dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), intersectionPointWorld);
-                    dragOffset.copy(intersectionPointWorld).sub(draggedObject.position);
-                    objectVelocity.set(0, 0, 0); zoomVelocity = 0;
-                    if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; /*console.log("DEBUG: Set target rotation speed to 0.");*/ }
-                    document.body.style.cursor = 'grabbing';
-                } else { console.warn("WARN: Clicked object's top group not found."); draggedObject = null; isDraggingObject = false; }
-
-            } else { // --- CLICKED ON BACKGROUND: Start Selection Drag ---
-                // console.log("DEBUG: Mousedown hit background. Starting selection box drag.");
-                isDraggingSelection = true; startX = event.clientX; startY = event.clientY;
-                Object.assign(selectionBox.style, { left: `${startX}px`, top: `${startY}px`, width: '0px', height: '0px', display: 'block' });
-                document.body.style.userSelect = 'none';
-            }
+             isDraggingObject = false; isDraggingSelection = false; draggedObject = null; if (event.target.closest('button, a, #nav-name, footer')) { return; } mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; raycaster.setFromCamera(mouse, camera); const intersects = raycaster.intersectObjects(defaultModels, true); if (intersects.length > 0) { isDraggingObject = true; let clickedGroup = intersects[0].object; while (clickedGroup.parent && clickedGroup.parent !== scene) { clickedGroup = clickedGroup.parent; } if (defaultModels.includes(clickedGroup)) { draggedObject = clickedGroup; const intersectionPointWorld = intersects[0].point; const cameraDirection = camera.getWorldDirection(new THREE.Vector3()); dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), intersectionPointWorld); dragOffset.copy(intersectionPointWorld).sub(draggedObject.position); objectVelocity.set(0, 0, 0); zoomVelocity = 0; if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; } document.body.style.cursor = 'grabbing'; } else { console.warn("WARN: Clicked group not found."); draggedObject = null; isDraggingObject = false; } } else { isDraggingSelection = true; startX = event.clientX; startY = event.clientY; Object.assign(selectionBox.style, { left: `${startX}px`, top: `${startY}px`, width: '0px', height: '0px', display: 'block' }); document.body.style.userSelect = 'none'; }
         }
-
-        // --- Mousemove Handler (Handles Hover, Object Drag Move, Selection Drag Move) ---
         function onDocumentMouseMove(event) {
-             mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-             if (isDraggingObject && draggedObject) { // --- Handle Object Drag Move ---
-                 raycaster.setFromCamera(mouse, camera);
-                 if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) { const newPosition = intersectionPoint.clone().sub(dragOffset); objectVelocity.copy(newPosition).sub(draggedObject.position); draggedObject.position.copy(newPosition); }
-                 return;
-             }
-
-             if (isDraggingSelection) { // --- Handle Selection Drag Move ---
-                 const currentX = event.clientX; const currentY = e.clientY; const rectLeft = Math.min(startX, currentX); const rectRight = Math.max(startX, currentX); const rectTop = Math.min(startY, currentY); const rectBottom = Math.max(startY, currentY); Object.assign(selectionBox.style, { left: `${rectLeft}px`, top: `${rectTop}px`, width: `${rectRight - rectLeft}px`, height: `${rectBottom - rectTop}px` }); const rendererSize = new THREE.Vector2(); renderer.getSize(rendererSize); const fragBottom = rendererSize.y - rectBottom; const fragTop = rendererSize.y - rectTop; if (rectRight > rectLeft && fragTop > fragBottom) { selectionContrastPass.uniforms.u_selectionBox.value.set(rectLeft, fragBottom, rectRight, fragTop); } else { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); } if (selectionContrastPass.uniforms.resolution) { selectionContrastPass.uniforms.resolution.value.set(rendererSize.x, rendererSize.y); }
-                 return;
-             }
-
-             // --- Handle Hover (Only if NOT dragging object or selection) ---
-             raycaster.setFromCamera(mouse, camera);
-             const intersects = raycaster.intersectObjects(defaultModels, true); let intersectedGroup = null;
-             if (intersects.length > 0) { let currentObject = intersects[0].object; while (currentObject.parent && currentObject.parent !== scene) { currentObject = currentObject.parent; } if (defaultModels.includes(currentObject)) { intersectedGroup = currentObject; } }
-
-             if (intersectedGroup && intersectedGroup !== currentlyHoveredGroup) {
-                 if (currentlyHoveredGroup) { currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } }); }
-                 intersectedGroup.traverse(child => { if (child.isMesh && child.userData.originalMaterial) { child.material = child.userData.originalMaterial; } });
-                 currentlyHoveredGroup = intersectedGroup;
-             } else if (!intersectedGroup && currentlyHoveredGroup) {
-                 currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } });
-                 currentlyHoveredGroup = null;
-             }
+             mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; if (isDraggingObject && draggedObject) { raycaster.setFromCamera(mouse, camera); if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) { const newPosition = intersectionPoint.clone().sub(dragOffset); objectVelocity.copy(newPosition).sub(draggedObject.position); draggedObject.position.copy(newPosition); } return; } if (isDraggingSelection) { const currentX = event.clientX; const currentY = event.clientY; const rectLeft = Math.min(startX, currentX); const rectRight = Math.max(startX, currentX); const rectTop = Math.min(startY, currentY); const rectBottom = Math.max(startY, currentY); Object.assign(selectionBox.style, { left: `${rectLeft}px`, top: `${rectTop}px`, width: `${rectRight - rectLeft}px`, height: `${rectBottom - rectTop}px` }); const rendererSize = new THREE.Vector2(); renderer.getSize(rendererSize); const fragBottom = rendererSize.y - rectBottom; const fragTop = rendererSize.y - rectTop; if (rectRight > rectLeft && fragTop > fragBottom) { selectionContrastPass.uniforms.u_selectionBox.value.set(rectLeft, fragBottom, rectRight, fragTop); } else { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); } if (selectionContrastPass.uniforms.resolution) { selectionContrastPass.uniforms.resolution.value.set(rendererSize.x, rendererSize.y); } return; } raycaster.setFromCamera(mouse, camera); const intersects = raycaster.intersectObjects(defaultModels, true); let intersectedGroup = null; if (intersects.length > 0) { let currentObject = intersects[0].object; while (currentObject.parent && currentObject.parent !== scene) { currentObject = currentObject.parent; } if (defaultModels.includes(currentObject)) { intersectedGroup = currentObject; } } if (intersectedGroup && intersectedGroup !== currentlyHoveredGroup) { if (currentlyHoveredGroup) { currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } }); } intersectedGroup.traverse(child => { if (child.isMesh && child.userData.originalMaterial) { const originalMat = child.userData.originalMaterial; const saturatedMaterial = originalMat.clone(); saturatedMaterial.flatShading = false; if (saturatedMaterial.color) { saturatedMaterial.color.offsetHSL(0, 0.3, 0); } child.material = saturatedMaterial; } }); currentlyHoveredGroup = intersectedGroup; document.body.style.cursor = 'pointer'; } else if (!intersectedGroup && currentlyHoveredGroup) { currentlyHoveredGroup.traverse(child => { if (child.isMesh && child.userData.bwMaterial) { child.material = child.userData.bwMaterial; } }); currentlyHoveredGroup = null; document.body.style.cursor = ''; }
         }
-
-        // --- Mouseup Handler (Ends Object Drag OR Selection Drag) ---
         function onDocumentMouseUp(event) {
-            // console.log("DEBUG: Mouseup event");
-            if (isDraggingObject) { // --- OBJECT DRAG END ---
-                // console.log("DEBUG: Object drag ended.");
-                document.body.style.cursor = '';
-                if (draggedObject && draggedObject.userData) {
-                     draggedObject.userData.targetRotationSpeed = draggedObject.userData.originalRotationSpeed ?? 0;
-                     // console.log(`DEBUG: Set target rotation speed to original: ${draggedObject.userData.targetRotationSpeed.toFixed(4)}`);
-                }
-                // Momentum / Clearing reference is handled in animate()
-                isDraggingObject = false;
+             if (isDraggingObject) { document.body.style.cursor = ''; if (draggedObject && draggedObject.userData) { const originalSpeed = draggedObject.userData.originalRotationSpeed ?? 0; draggedObject.userData.targetRotationSpeed = originalSpeed; } isDraggingObject = false; } if (isDraggingSelection) { isDraggingSelection = false; selectionBox.style.display = 'none'; document.body.style.userSelect = ''; if (selectionContrastPass) { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); } }
+        }
+        // Updated Mouse Wheel Handler structure
+        function onDocumentMouseWheel(event) {
+            // If actively dragging selection box, ignore completely
+            if (isDraggingSelection) {
+                return;
             }
 
-            if (isDraggingSelection) { // --- SELECTION DRAG END ---
-                 // console.log("DEBUG: Selection box drag ended.");
-                 isDraggingSelection = false; selectionBox.style.display = 'none'; document.body.style.userSelect = '';
-                 if (selectionContrastPass) { selectionContrastPass.uniforms.u_selectionBox.value.set(0, 0, 0, 0); }
+            // If an object is selected (being dragged OR coasting)
+            if (draggedObject) {
+                // Apply OBJECT ZOOM
+                event.preventDefault(); // Prevent page scroll
+                zoomVelocity += event.deltaY * zoomSensitivityFactor;
+                // Stop object rotation while zooming for better control
+                if (draggedObject.userData) {
+                    draggedObject.userData.targetRotationSpeed = 0;
+                }
+                // console.log("ZOOM: zoomVelocity:", zoomVelocity.toFixed(4)); // DEBUG
+                return; // Don't do camera scroll
+            }
+
+            // If NO object is selected/coasting, and not dragging selection -> CAMERA SCROLL
+            if (minCameraY !== maxCameraY) { // Check if scrolling is enabled
+                event.preventDefault(); // Prevent default page scroll
+                cameraTargetY -= event.deltaY * 0.02; // Update target (adjust sensitivity 0.02?)
+                cameraTargetY = Math.max(minCameraY, Math.min(maxCameraY, cameraTargetY)); // Clamp
+                // console.log("SCROLL: cameraTargetY:", cameraTargetY.toFixed(2)); // DEBUG
             }
         }
 
-        // --- Mouse Wheel Handler ---
-         function onDocumentMouseWheel(event) {
-            if (draggedObject) {
-                 // console.log("DEBUG: Mouse wheel event while object selected.");
-                 event.preventDefault();
-                 zoomVelocity += event.deltaY * zoomSensitivityFactor;
-                 // console.log(`DEBUG: Zoom velocity changed to: ${zoomVelocity.toFixed(4)}`);
-                 if (draggedObject.userData) { draggedObject.userData.targetRotationSpeed = 0; } // Keep damping rotation while zooming
-            }
-         }
-
-        // --- animate ---
+        // --- animate (Increased Zoom Power) ---
         function animate() {
              requestAnimationFrame(animate);
-             const delta = clock.getDelta();
-             const deltaFactor = Math.min(delta, 0.05); // Clamp delta
+             const delta = clock.getDelta(); const deltaFactor = Math.min(delta, 0.05);
+             let posStopped = true, zoomStopped = true, rotStopped = true;
 
-             let posStopped = true; // Assume stopped unless proven otherwise
-             let zoomStopped = true;
-             let rotStopped = true;
+             // Camera Smooth Scrolling
+             if (camera && Math.abs(camera.position.y - cameraTargetY) > 0.001) { camera.position.y += (cameraTargetY - camera.position.y) * cameraLerpFactor; }
+             else if (camera) { camera.position.y = cameraTargetY; } // Snap
 
-             // --- Update Logic for Dragged/Coasting Object ---
+             // Object Momentum/Interaction
              if (draggedObject) {
                 if (draggedObject.userData && draggedObject.position) {
+                     // Position Momentum
+                     if (!isDraggingObject && objectVelocity.lengthSq() > velocityStopThreshold * velocityStopThreshold) { posStopped = false; draggedObject.position.addScaledVector(objectVelocity, deltaFactor * 60); objectVelocity.multiplyScalar(dampingFactor); } else if (!isDraggingObject && objectVelocity.lengthSq() > 0) { objectVelocity.set(0,0,0); } else if (isDraggingObject) { posStopped = false; }
 
-                    // Position Momentum
-                    if (!isDraggingObject && objectVelocity.lengthSq() > velocityStopThreshold) {
-                        posStopped = false; // Still moving
-                        draggedObject.position.addScaledVector(objectVelocity, deltaFactor * 60);
-                        objectVelocity.multiplyScalar(dampingFactor);
-                    } else if (objectVelocity.lengthSq() > 0) { objectVelocity.set(0,0,0); }
+                     // Zoom Momentum
+                     if (Math.abs(zoomVelocity) > zoomStopThreshold) {
+                         zoomStopped = false;
+                         try {
+                             const zoomDirection = draggedObject.position.clone().sub(camera.position).normalize();
+                             // Increase multiplier for more zoom effect
+                             const moveAmount = zoomVelocity * 80 * deltaFactor; // <-- INCREASED ZOOM MULTIPLIER
+                             // console.log("ZOOM Apply: Velo=", zoomVelocity.toFixed(4), "Amount=", moveAmount.toFixed(4)); // DEBUG
+                             draggedObject.position.addScaledVector(zoomDirection, moveAmount);
+                             zoomVelocity *= zoomDampingFactor;
+                         } catch (e) { console.error("Zoom error:", e); zoomVelocity = 0; }
+                     } else if (zoomVelocity !== 0) {
+                         // console.log("ZOOM Snap Stop: Velo=", zoomVelocity.toFixed(4)); // DEBUG
+                         zoomVelocity = 0;
+                     }
 
-                    // Zoom Momentum
-                    if (Math.abs(zoomVelocity) > zoomStopThreshold) {
-                        zoomStopped = false; // Still zooming
-                        try { const zoomDirection = draggedObject.position.clone().sub(camera.position).normalize(); const moveAmount = zoomVelocity * 50 * deltaFactor; draggedObject.position.addScaledVector(zoomDirection, moveAmount); zoomVelocity *= zoomDampingFactor; }
-                        catch (e) { console.error("ERROR during zoom:", e); zoomVelocity = 0; }
-                    } else if (zoomVelocity !== 0) { zoomVelocity = 0; }
+                     // Rotation Damping/Acceleration
+                     const currentSpeed = draggedObject.userData.rotationSpeed ?? 0; const targetSpeed = draggedObject.userData.targetRotationSpeed ?? 0;
+                     if (Math.abs(targetSpeed - currentSpeed) > rotationStopThreshold) { rotStopped = false; const lerpFactor = 1.0 - Math.exp(-rotationDampingFactor * deltaFactor * 100); draggedObject.userData.rotationSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, lerpFactor); }
+                     else if (currentSpeed !== targetSpeed) { draggedObject.userData.rotationSpeed = targetSpeed; }
 
-                    // Rotation Damping/Acceleration
-                    const currentSpeed = draggedObject.userData.rotationSpeed ?? 0;
-                    const targetSpeed = draggedObject.userData.targetRotationSpeed ?? 0;
-                    if (Math.abs(targetSpeed - currentSpeed) > rotationStopThreshold) {
-                         rotStopped = false; // Still lerping
-                         const lerpFactor = 1.0 - Math.exp(-rotationDampingFactor * deltaFactor * 100);
-                         draggedObject.userData.rotationSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, lerpFactor);
-                    } else if (currentSpeed !== targetSpeed) { draggedObject.userData.rotationSpeed = targetSpeed; } // Snap
+                     // Check if stopped
+                     if (!isDraggingObject && posStopped && zoomStopped && rotStopped) {
+                         // console.log("Clearing draggedObject"); // DEBUG
+                         draggedObject = null;
+                     }
+                 } else { console.warn("Dragged object missing data"); draggedObject = null; isDraggingObject = false; objectVelocity.set(0,0,0); zoomVelocity = 0; }
+             }
 
-                    // Check if ALL motion stopped to clear reference
-                    if (!isDraggingObject && posStopped && zoomStopped && rotStopped) {
-                       console.log("DEBUG: All momentum/lerp finished. Clearing draggedObject ref.");
-                       if(draggedObject.userData) draggedObject.userData.targetRotationSpeed = draggedObject.userData.originalRotationSpeed ?? 0; // Ensure target is reset
-                       draggedObject = null; // Clear reference
-                    }
-                } else {
-                     console.warn("WARN: draggedObject ref exists but data missing, clearing.");
-                     draggedObject = null; isDraggingObject = false; objectVelocity.set(0,0,0); zoomVelocity = 0;
-                }
-             } // End of if(draggedObject)
+             // Apply Rotation to ALL models
+             defaultModels.forEach(model => { if(model?.userData?.rotationSpeed) { model.rotation.z += model.userData.rotationSpeed * 50 * deltaFactor; } });
 
-             // --- Apply Rotation to ALL models ---
-             defaultModels.forEach(model => {
-                  if(model?.userData?.rotationSpeed) {
-                      // Apply based on its current speed, using delta
-                       model.rotation.z += model.userData.rotationSpeed * 50 * deltaFactor; // Adjusted multiplier
-                  }
-             });
-
-             // --- Rendering ---
-             if (composer) { try { composer.render(); } catch(e) { console.error("ERROR: Composer render failed:", e); }
-             } else if (renderer && scene && camera) { try { renderer.render(scene, camera); } catch(e) { console.error("ERROR: Basic render failed:", e); } }
+             // Rendering
+             if (composer) { try { composer.render(); } catch(e) { console.error("Composer render error:", e); } } else if (renderer && scene && camera) { try { renderer.render(scene, camera); } catch(e) { console.error("Basic render error:", e); } }
         }
 
-        // --- UI Logic (Theme Toggle Only) ---
+        // --- UI Logic ---
         const themeToggleButton = document.getElementById('theme-toggle-button');
-        themeToggleButton.addEventListener('click', () => { document.body.classList.toggle('dark-theme'); });
+        if (themeToggleButton) { themeToggleButton.addEventListener('click', () => { document.body.classList.toggle('dark-theme'); }); }
+        else { console.warn("Theme toggle button not found."); }
 
-        // Init 3D background
+        // --- Initialize ---
         init3DBackground();
 
     </script>
