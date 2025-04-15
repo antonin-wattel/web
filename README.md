@@ -1,1 +1,1 @@
-[https://antonin-wattel.github.io/web/]
+https://antonin-wattel.github.io/web/
